@@ -1,0 +1,18 @@
+{
+  "brand": {
+    "name": "PlayaVida",
+    "primary_color": "#0f766e",
+    "secondary_color": "#fbbf24"
+  },
+  "geography": {
+    "area_name": "Playa del Carmen",
+    "region": "Quintana Roo",
+    "country": "México",
+    "currency": "MXN"
+  },
+  "legal": {
+    "privacy_version": "1.0",
+    "privacy_text_en": "Privacy policy content...",
+    "privacy_text_es": "Contenido de política de privacidad..."
+  }
+}
