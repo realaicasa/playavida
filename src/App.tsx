@@ -30,7 +30,7 @@ import {
   CommunityGroup,
 } from './types';
 import { playaVidaStore } from './lib/storage';
-import { LOCATIONS, DEMO_USERS } from './lib/constants';
+import { LOCATIONS } from './lib/constants';
 import { translations, getCategoryLabel } from './lib/i18n';
 import { Header } from './components/Header';
 import { BottomNav, MainTab } from './components/BottomNav';
@@ -70,7 +70,7 @@ import {
 export default function App() {
   const [language, setLanguage] = useState<Language>(() => {
     const stored = localStorage.getItem('lang');
-    return (stored as Language) || DEMO_USERS[0].selected_language || 'es';
+    return (stored as Language) || 'es';
   });
   const [currentLocation, setCurrentLocation] = useState<LocationCode | 'ALL'>('PDC');
   const [activeTab, setActiveTab] = useState<MainTab>('discover');
@@ -83,8 +83,9 @@ export default function App() {
     return val !== 'true' && val !== '1';
   });
 
-  // Active user (starts with demo user Sofía for immediate rich testing)
-  const [currentUser, setCurrentUser] = useState<User | null>(DEMO_USERS[0]);
+  // Active user - will be loaded from session on mount
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [isSessionLoading, setIsSessionLoading] = useState(true);
 
   // Navigation / View states
   const [selectedBusiness, setSelectedBusiness] = useState<PublicBusinessProjection | null>(null);
@@ -132,21 +133,32 @@ export default function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  // Helper to switch main tab and close open minisites
-  const handleSwitchTab = (tab: MainTab) => {
-    setSelectedBusiness(null);
-    setSelectedEvent(null);
-    setSelectedGroup(null);
-    setActiveTab(tab);
-  };
-
-  // Sync user's saved language preference if active
+  // Validate session on mount
   useEffect(() => {
-    if (currentUser?.selected_language && currentUser.selected_language !== language) {
-      setLanguage(currentUser.selected_language);
-    }
-  }, [currentUser]);
+    const validateSession = async () => {
+      try {
+        const res = await fetch('/api/auth/session');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.authenticated && data.userId) {
+            // Fetch user details from Teable
+            const userRes = await fetch(`/api/users/${data.userId}`);
+            if (userRes.ok) {
+              const user = await userRes.json();
+              setCurrentUser(user);
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Session validation failed:', error);
+      } finally {
+        setIsSessionLoading(false);
+      }
+    };
+    validateSession();
+  }, []);
 
+  // Helper functions
   const handleToggleLanguage = () => {
     const nextLang: Language = language === 'es' ? 'en' : 'es';
     setLanguage(nextLang);
@@ -156,9 +168,14 @@ export default function App() {
     }
   };
 
-  const t = translations[language];
+  const handleSwitchTab = (tab: MainTab) => {
+    setSelectedBusiness(null);
+    setSelectedEvent(null);
+    setSelectedGroup(null);
+    setActiveTab(tab);
+  };
 
-  // Refresh trigger
+  const t = translations[language];
   const [dataVersion, setDataVersion] = useState(0);
   const handleDataUpdated = () => setDataVersion((v) => v + 1);
 
@@ -789,7 +806,14 @@ export default function App() {
                       )}
 
                       <button
-                        onClick={() => setCurrentUser(null)}
+                        onClick={async () => {
+                          try {
+                            await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+                          } catch (e) {
+                            console.error('Logout failed:', e);
+                          }
+                          setCurrentUser(null);
+                        }}
                         className="w-full py-2.5 px-4 text-rose-600 hover:bg-rose-50 text-xs font-semibold rounded-xl transition-colors cursor-pointer"
                       >
                         {t.log_out_action}

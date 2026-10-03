@@ -1,8 +1,6 @@
 import React, { useState } from 'react';
 import { Mail, KeyRound, ShieldCheck, X, Check, ArrowRight } from 'lucide-react';
 import { Language, User } from '../types';
-import { playaVidaStore } from '../lib/storage';
-import { DEMO_USERS } from '../lib/constants';
 import { translations } from '../lib/i18n';
 
 interface AuthModalProps {
@@ -26,33 +24,77 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [otpCode, setOtpCode] = useState('');
   const [otpSentNotice, setOtpSentNotice] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSendOtp = (e: React.FormEvent) => {
+  const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !email.includes('@')) {
       setError('Por favor introduce un correo válido.');
       return;
     }
     setError(null);
-    setOtpSentNotice(true);
-    setStep('otp');
+    setIsLoading(true);
+    try {
+      const res = await fetch('/api/auth/request-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.toLowerCase().trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.code === 'RATE_LIMITED' ? 'Demasiados intentos. Intenta más tarde.' : 'Error al enviar el código');
+        setIsLoading(false);
+        return;
+      }
+      setOtpSentNotice(true);
+      setStep('otp');
+    } catch (e) {
+      console.error('OTP request failed:', e);
+      setError('Error de conexión. Intenta de nuevo.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleVerifyOtp = (e: React.FormEvent) => {
+  const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!otpCode || otpCode.length < 4) {
+    if (!otpCode || otpCode.length < 6) {
       setError('Ingresa el código de 6 dígitos.');
       return;
     }
-    // Authenticate or create user in store
-    const user = playaVidaStore.authenticateWithEmail(email);
-    onAuthSuccess(user);
-    onClose();
-  };
-
-  const handleQuickDemoLogin = (demoUser: User) => {
-    onAuthSuccess(demoUser);
-    onClose();
+    setError(null);
+    setIsLoading(true);
+    try {
+      const res = await fetch('/api/auth/verify-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ email: email.toLowerCase().trim(), code: otpCode }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.code === 'RATE_LIMITED' ? 'Demasiados intentos. Intenta más tarde.' : 
+                 data.code === 'OTP_EXPIRED' ? 'El código ha expirado. Solicita uno nuevo.' : 'Código inválido');
+        setIsLoading(false);
+        return;
+      }
+      // Fetch user details from the session response
+      const user: User = {
+        id: data.userId,
+        public_reference: '',
+        email: email.toLowerCase(),
+        selected_language: 'es',
+        role: data.roles?.[0] || 'member',
+        created_at: new Date().toISOString(),
+      };
+      onAuthSuccess(user);
+      onClose();
+    } catch (e) {
+      console.error('OTP verification failed:', e);
+      setError('Error de conexión. Intenta de nuevo.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -91,6 +133,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   <input
                     type="email"
                     required
+                    disabled={isLoading}
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="ejemplo@playadelcarmen.mx"
@@ -103,9 +146,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
               <button
                 type="submit"
-                className="w-full py-2.5 px-4 bg-teal-700 hover:bg-teal-800 text-white font-semibold text-xs rounded-xl shadow-xs transition-colors flex items-center justify-center gap-2"
+                disabled={isLoading}
+                className="w-full py-2.5 px-4 bg-teal-700 hover:bg-teal-800 text-white font-semibold text-xs rounded-xl shadow-xs transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <span>Enviar Código de Acceso</span>
+                {isLoading ? 'Enviando...' : 'Enviar Código de Acceso'}
                 <ArrowRight className="w-3.5 h-3.5" />
               </button>
             </form>
@@ -132,50 +176,32 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setStep('email')}
-                  className="py-2.5 px-3 bg-stone-100 text-stone-700 text-xs font-semibold rounded-xl"
+                  disabled={isLoading}
+                  className="py-2.5 px-3 bg-stone-100 text-stone-700 text-xs font-semibold rounded-xl disabled:opacity-50"
                 >
                   Atrás
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 py-2.5 px-4 bg-teal-700 hover:bg-teal-800 text-white font-semibold text-xs rounded-xl shadow-xs"
+                  disabled={isLoading}
+                  className="flex-1 py-2.5 px-4 bg-teal-700 hover:bg-teal-800 text-white font-semibold text-xs rounded-xl shadow-xs disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Verificar y Entrar
+                  {isLoading ? 'Verificando...' : 'Verificar y Entrar'}
                 </button>
               </div>
             </form>
           )}
 
-          {/* Quick Demo Accounts */}
-          <div className="pt-3 border-t border-stone-100 space-y-2">
-            <span className="text-[11px] font-semibold text-stone-500 uppercase tracking-wider block">
-              Cuentas demo para probar roles:
-            </span>
-            <div className="space-y-1.5">
-              {DEMO_USERS.slice(0, 3).map((du: User) => (
-                <button
-                  key={du.id}
-                  onClick={() => handleQuickDemoLogin(du)}
-                  className="w-full p-2.5 bg-stone-50 hover:bg-stone-100 rounded-xl border border-stone-200 text-left flex items-center justify-between text-xs transition-colors"
-                >
-                  <div>
-                    <span className="font-semibold text-stone-800 block">{du.email}</span>
-                    <span className="text-[10px] text-stone-500 font-mono">
-                      Ref: {du.public_reference} • {du.role}
-                    </span>
-                  </div>
-                  <span className="text-[11px] font-bold text-teal-700">Usar →</span>
-                </button>
-              ))}
+          <div className="pt-3 border-t border-stone-100 text-center">
+            <div className="flex items-center justify-center gap-1.5 text-[11px] text-stone-400">
+              <ShieldCheck className="w-3.5 h-3.5 text-teal-700" />
+              <span>Autenticación protegida sin contraseñas</span>
             </div>
-          </div>
-
-          <div className="flex items-center justify-center gap-1.5 text-[11px] text-stone-400">
-            <ShieldCheck className="w-3.5 h-3.5 text-teal-700" />
-            <span>Autenticación protegida sin contraseñas</span>
           </div>
         </div>
       </div>
     </div>
   );
 };
+
+export default AuthModal;
