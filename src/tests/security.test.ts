@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Automated Security & Privacy Test Suite for PlayaVida
  *
  * Verifies core security invariants:
@@ -10,23 +10,124 @@
  * 6. Loyalty stamp awards require valid staff PIN authorization.
  */
 
-import { playaVidaStore } from '../lib/storage';
+import { playaVidaStore, setTestStorage, getTestStorage } from '../lib/storage';
 import { teableAdapter } from '../lib/teableAdapter';
+import {
+  User,
+  CustomerLoyaltyCard,
+} from '../types';
+import {
+  TEST_OWNER_A,
+  TEST_CUSTOMER_A,
+  TEST_STAFF_A,
+  TEST_BUSINESS_A,
+  TEST_BUSINESS_B,
+  TEST_PRIVATE_CONTACTS_A,
+  TEST_SUBSCRIPTION_ACTIVE,
+  TEST_SUBSCRIPTION_EXPIRED,
+  TEST_LOYALTY_PROGRAM_A,
+  TEST_CUSTOMER_CARD_A,
+} from './fixtures/securityFixtures';
+
+// Storage keys (mirrored from storage.ts)
+const STORAGE_KEYS = {
+  USERS: 'playavida_users',
+  CURRENT_USER_ID: 'playavida_current_user_id',
+  BUSINESSES: 'playavida_businesses',
+  PRIVATE_CONTACTS: 'playavida_private_contacts',
+  SUBSCRIPTIONS: 'playavida_subscriptions',
+  LOYALTY_PROGRAMS: 'playavida_loyalty_programs',
+  CUSTOMER_CARDS: 'playavida_customer_cards',
+  STAFF_ACCOUNTS: 'playavida_staff_accounts',
+};
 
 let passed = 0;
 let failed = 0;
 
 function assert(condition: boolean, testName: string) {
   if (condition) {
-    console.log(`  ✓ PASS: ${testName}`);
+    console.log(`  Ô£ô PASS: ${testName}`);
     passed++;
   } else {
-    console.error(`  ✗ FAIL: ${testName}`);
+    console.error(`  Ô£ù FAIL: ${testName}`);
     failed++;
   }
 }
 
-console.log('\n🔒 Starting PlayaVida Security & Boundary Validation Tests...\n');
+// Populate store with test fixtures before running tests
+function setupTestFixtures(): void {
+  // Users
+  const existingUsers = getTestStorage<User[]>(STORAGE_KEYS.USERS, []);
+  const users = [...existingUsers];
+  if (!users.find(u => u.id === TEST_OWNER_A.id)) users.push(TEST_OWNER_A);
+  if (!users.find(u => u.id === TEST_CUSTOMER_A.id)) users.push(TEST_CUSTOMER_A);
+  if (!users.find(u => u.id === 'usr_demo_001')) {
+    users.push({
+      id: 'usr_demo_001',
+      public_reference: 'USR-DEMO-001',
+      email: 'demo@playavida.test',
+      selected_language: 'es',
+      role: 'member',
+      created_at: '2026-01-01T00:00:00Z',
+    });
+  }
+  if (!users.find(u => u.id === 'usr_002')) {
+    users.push({
+      id: 'usr_002',
+      public_reference: 'USR-TEST-CUSTA',
+      email: 'test_customer_a@playavida.test',
+      selected_language: 'en',
+      role: 'member',
+      created_at: '2026-01-01T00:00:00Z',
+    });
+  }
+  if (!users.find(u => u.id === 'usr_001')) {
+    users.push({
+      id: 'usr_001',
+      public_reference: 'USR-TEST-OWNERA',
+      email: 'test_owner_a@playavida.test',
+      selected_language: 'es',
+      role: 'business_owner',
+      created_at: '2026-01-01T00:00:00Z',
+    });
+  }
+  setTestStorage(STORAGE_KEYS.USERS, users);
+
+  // Businesses
+  const existingBusinesses = getTestStorage<typeof TEST_BUSINESS_A[]>(STORAGE_KEYS.BUSINESSES, []);
+  const businesses = [...existingBusinesses];
+  const bus001 = { ...TEST_BUSINESS_A, id: 'bus_001', business_reference: 'BUS-PDC-TEST001' };
+  const bus003 = { ...TEST_BUSINESS_B, id: 'bus_003', business_reference: 'BUS-PDC-TEST003' };
+  if (!businesses.find(b => b.id === 'bus_001')) businesses.unshift(bus001);
+  if (!businesses.find(b => b.id === 'bus_003')) businesses.unshift(bus003);
+  if (!businesses.find(b => b.id === TEST_BUSINESS_A.id)) businesses.unshift(TEST_BUSINESS_A);
+  if (!businesses.find(b => b.id === TEST_BUSINESS_B.id)) businesses.unshift(TEST_BUSINESS_B);
+  setTestStorage(STORAGE_KEYS.BUSINESSES, businesses);
+
+  // Private contacts
+  setTestStorage(STORAGE_KEYS.PRIVATE_CONTACTS, {
+    bus_001: TEST_PRIVATE_CONTACTS_A,
+  });
+
+  // Subscriptions
+  setTestStorage(STORAGE_KEYS.SUBSCRIPTIONS, {
+    bus_001: TEST_SUBSCRIPTION_ACTIVE,
+    bus_003: TEST_SUBSCRIPTION_EXPIRED,
+  });
+
+  // Loyalty programs
+  setTestStorage(STORAGE_KEYS.LOYALTY_PROGRAMS, [TEST_LOYALTY_PROGRAM_A]);
+
+  // Customer cards
+  setTestStorage(STORAGE_KEYS.CUSTOMER_CARDS, [TEST_CUSTOMER_CARD_A]);
+
+  // Staff accounts
+  setTestStorage(STORAGE_KEYS.STAFF_ACCOUNTS, [TEST_STAFF_A]);
+}
+
+console.log('\n­ƒöÆ Starting PlayaVida Security & Boundary Validation Tests...\n');
+
+setupTestFixtures();
 
 // TEST 1: Public Projections Never Contain Private Fields
 console.log('--- Test Suite 1: Data Projection Security ---');
@@ -53,7 +154,7 @@ assert(!leakedFieldsFound, 'Public business projections strictly exclude private
 console.log('\n--- Test Suite 2: Draft and Archived Visibility Boundaries ---');
 const testDraftBiz = playaVidaStore.createBusinessDraft('usr_demo_001', {
   name: 'Secreto Beach Draft',
-  category: 'Gastronomía y Restaurantes',
+  category: 'Gastronom├¡a y Restaurantes',
   location_code: 'PDC',
   location_label: 'Playa del Carmen, Q.R.',
   description_es: 'Borrador privado no publicado',
@@ -61,7 +162,7 @@ const testDraftBiz = playaVidaStore.createBusinessDraft('usr_demo_001', {
   cover_url: 'https://images.unsplash.com/photo-1',
   logo_url: 'https://images.unsplash.com/photo-2',
   services: ['Borrador'],
-  languages: ['Español'],
+  languages: ['Espa├▒ol'],
 });
 
 const searchResultsBeforePublish = playaVidaStore.getPublicBusinesses();
@@ -169,7 +270,7 @@ assert(
 
 // TEST 7: Native Loyalty Stamp Security
 console.log('\n--- Test Suite 7: Loyalty Staff PIN Authentication ---');
-const userCards = playaVidaStore.getCustomerCards('usr_002');
+const userCards = playaVidaStore.getCustomerCards('usr_test_customer_a');
 assert(userCards.length > 0, 'Customer loyalty card found for testing');
 if (userCards.length > 0) {
   const card = userCards[0];
@@ -178,13 +279,17 @@ if (userCards.length > 0) {
   // Attempt with invalid PIN
   const invalidPinResult = playaVidaStore.awardStamp(card.id, '9999');
   assert(!invalidPinResult.success, 'Stamp award with invalid staff PIN is rejected');
-  assert(card.stamps_count === initialStamps, 'Stamp count was not incremented');
+  // Re-fetch to verify no increment
+  const cardAfterInvalid = playaVidaStore.getCustomerCards('usr_test_customer_a').find(c => c.id === card.id);
+  assert(cardAfterInvalid?.stamps_count === initialStamps, 'Stamp count was not incremented');
 
-  // Attempt with valid Barista PIN (1234 for Mateo)
+  // Attempt with valid Barista PIN (1234 for Test Staff A)
   const validPinResult = playaVidaStore.awardStamp(card.id, '1234');
   assert(validPinResult.success, 'Stamp award with valid staff PIN is accepted');
+  // Re-fetch to verify increment
+  const cardAfterValid = playaVidaStore.getCustomerCards('usr_test_customer_a').find(c => c.id === card.id);
   assert(
-    card.stamps_count === initialStamps + 1,
+    cardAfterValid?.stamps_count === initialStamps + 1,
     'Stamp count atomically incremented by exactly 1'
   );
 }
@@ -196,10 +301,10 @@ const rawTeableBusinessRecord = {
   fields: {
     business_reference: 'BUS-PDC-TB888',
     name: 'Caribe Raw Dining',
-    category: 'Gastronomía y Restaurantes',
+    category: 'Gastronom├¡a y Restaurantes',
     location_code: 'PDC',
     location_label: 'Playa del Carmen Centro',
-    description_es: 'Cocina de autor caribeña.',
+    description_es: 'Cocina de autor caribe├▒a.',
     description_en: 'Artisanal Caribbean cuisine.',
     cover_url: 'https://example.com/cover.jpg',
     logo_url: 'https://example.com/logo.jpg',

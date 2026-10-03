@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { Shield, FileText, Smartphone, AlertTriangle, Scale, Heart, MapPin, Globe, Sparkles, Award, Plus, Building2, Users, Calendar, Home } from 'lucide-react';
 import { Language, LocationCode, User } from '../types';
 import { translations } from '../lib/i18n';
@@ -42,7 +42,7 @@ export const Footer: React.FC<FooterProps> = ({
   const t = translations[language];
   const isEs = language === 'es';
 
-  const handleCreateAction = (action: () => void | undefined) => {
+  const handleCreateAction = (action?: () => void) => {
     if (currentUser) {
       action?.();
     } else {
@@ -65,7 +65,7 @@ export const Footer: React.FC<FooterProps> = ({
                   Playa<span className="text-teal-400">Vida</span>
                 </span>
                 <span className="text-[10px] uppercase font-semibold tracking-wider text-teal-400/90 block mt-0.5">
-                  Riviera Maya • Quintana Roo
+                  Riviera Maya ÔÇó Quintana Roo
                 </span>
               </button>
             </div>
@@ -116,7 +116,7 @@ export const Footer: React.FC<FooterProps> = ({
               <button onClick={() => handleCreateAction(onOpenCreateEvent)} className="text-xs flex items-center gap-2 text-stone-400 hover:text-white transition-colors">
                 <Calendar className="w-3.5 h-3.5" /> {isEs ? 'Publicar Evento' : 'Publish Event'}
               </button>
-              <button onClick={() => handleCreateAction(onOpenSponsor)} className="text-xs flex items-center gap-2 text-stone-400 hover:text-white transition-colors">
+              <button onClick={() => handleCreateAction(onOpenSponsorInfo)} className="text-xs flex items-center gap-2 text-stone-400 hover:text-white transition-colors">
                 <Sparkles className="w-3.5 h-3.5" /> {isEs ? 'Sponsor' : 'Sponsor'}
               </button>
             </div>
@@ -209,7 +209,7 @@ export const Footer: React.FC<FooterProps> = ({
               </div>
               <p className="text-[11px] leading-relaxed">
                 {isEs
-                  ? 'Diseñado para empoderar a la comunidad local de Playa del Carmen con código QR real y sellos sin intermediarios.'
+                  ? 'Dise├▒ado para empoderar a la comunidad local de Playa del Carmen con c├│digo QR real y sellos sin intermediarios.'
                   : 'Designed to empower local businesses and residents in Playa del Carmen with live QR codes and native loyalty.'}
               </p>
             </div>
@@ -220,7 +220,7 @@ export const Footer: React.FC<FooterProps> = ({
                 className="flex items-center gap-1.5 py-1.5 px-3 bg-stone-800 hover:bg-stone-700 text-stone-300 hover:text-white rounded-lg border border-stone-700 text-xs font-semibold transition-colors"
               >
                 <Globe className="w-3.5 h-3.5 text-teal-400" />
-                <span>{language === 'es' ? 'English (US)' : 'Español (MX)'}</span>
+                <span>{language === 'es' ? 'English (US)' : 'Espa├▒ol (MX)'}</span>
               </button>
             </div>
           </div>
@@ -231,17 +231,17 @@ export const Footer: React.FC<FooterProps> = ({
           <p>{t.footer_copyright}</p>
           <div className="flex items-center gap-4 text-[11px]">
             <span>PWA Build v2.4</span>
-            <span>•</span>
+            <span>ÔÇó</span>
             <span className="text-teal-400 font-medium">{isEs ? 'Red Comunitaria' : 'Community Network'}</span>
-            <span>•</span>
+            <span>ÔÇó</span>
             <button onClick={() => window.location.href = '/intro.html'} className="hover:underline cursor-pointer">
               {isEs ? 'Ver Intro' : 'View Intro'}
             </button>
-            <span>•</span>
+            <span>ÔÇó</span>
             <button onClick={onOpenPrivacy} className="hover:underline cursor-pointer">
               {t.footer_privacy}
             </button>
-            <span>•</span>
+            <span>ÔÇó</span>
             <button onClick={onOpenLegal} className="hover:underline cursor-pointer">
               {t.footer_legal}
             </button>

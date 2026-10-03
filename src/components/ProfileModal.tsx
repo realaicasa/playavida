@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import {
   User,
   Language,
@@ -96,17 +96,17 @@ const AVATAR_PRESETS = [
 ];
 
 const SUGGESTED_PROFILE_TAGS = [
-  'Nómada Digital',
-  'Gastronomía',
+  'N├│mada Digital',
+  'Gastronom├¡a',
   'Buceo y Cenotes',
   'Yoga',
   'Sostenibilidad',
   'Voluntariado',
   'Emprendedor',
-  'Fotografía',
+  'Fotograf├¡a',
   'Salsa',
-  'Música en Vivo',
-  'Café de Especialidad',
+  'M├║sica en Vivo',
+  'Caf├® de Especialidad',
 ];
 
 export const ProfileModal: React.FC<ProfileModalProps> = ({
@@ -205,7 +205,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
 
   const [savedNotice, setSavedNotice] = useState(false);
   const [copiedRef, setCopiedRef] = useState(false);
-  const [modalTab, setModalTab] = useState<'profile' | 'creations' | 'interests' | 'optins'>('profile');
+  const [modalTab, setModalTab] = useState<'profile' | 'creations' | 'interests' | 'optins' | 'favorites'>('profile');
   const [optIns, setOptIns] = useState(() => playaVidaStore.getPushOptIns(currentUser.id));
 
   const userCreatedContent = playaVidaStore.getUserCreatedContent(currentUser.id);
@@ -459,11 +459,11 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
               <div className="p-4 bg-gradient-to-r from-teal-50 to-emerald-50 rounded-2xl border border-teal-200/80 space-y-2">
                 <div className="flex items-center gap-2 text-teal-900 font-bold text-xs uppercase tracking-wider">
                   <Sparkles className="w-4 h-4 text-teal-700" />
-                  <span>{isEs ? 'Centro de Creación Comunitario' : 'Community Creation Hub'}</span>
+                  <span>{isEs ? 'Centro de Creaci├│n Comunitario' : 'Community Creation Hub'}</span>
                 </div>
                 <p className="text-xs text-stone-700 leading-relaxed">
                   {isEs
-                    ? 'Tu perfil personal de miembro actúa como respaldo oficial. Desde aquí puedes registrar tu negocio local, fundar un grupo comunitario o publicar un evento en el calendario.'
+                    ? 'Tu perfil personal de miembro act├║a como respaldo oficial. Desde aqu├¡ puedes registrar tu negocio local, fundar un grupo comunitario o publicar un evento en el calendario.'
                     : 'Your personal member profile acts as your official foundation. From here you can register your local business, start a community group, or publish an event to the coastal calendar.'}
                 </p>
               </div>
@@ -482,8 +482,8 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                       </h4>
                       <p className="text-[11px] text-stone-500 mt-1 leading-normal">
                         {isEs
-                          ? 'Cafetería, restaurante, estudio de buceo o servicio.'
-                          : 'Café, restaurant, dive center, or local service.'}
+                          ? 'Cafeter├¡a, restaurante, estudio de buceo o servicio.'
+                          : 'Caf├®, restaurant, dive center, or local service.'}
                       </p>
                     </div>
                   </div>
@@ -512,7 +512,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                       </h4>
                       <p className="text-[11px] text-stone-500 mt-1 leading-normal">
                         {isEs
-                          ? 'Nómadas, buceadores, amantes de la ecología o salsa.'
+                          ? 'N├│madas, buceadores, amantes de la ecolog├¡a o salsa.'
                           : 'Nomads, scuba divers, reef ecology, or salsa lovers.'}
                       </p>
                     </div>
@@ -542,7 +542,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                       </h4>
                       <p className="text-[11px] text-stone-500 mt-1 leading-normal">
                         {isEs
-                          ? 'Encuentros, talleres, limpiezas de playa o música en vivo.'
+                          ? 'Encuentros, talleres, limpiezas de playa o m├║sica en vivo.'
                           : 'Meetups, workshops, beach cleanups, live music.'}
                       </p>
                     </div>
@@ -593,7 +593,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                           <div className="min-w-0">
                             <h5 className="text-xs font-bold text-stone-900 truncate">{biz.name}</h5>
                             <p className="text-[11px] text-stone-500 truncate">
-                              {biz.location_code} • {biz.category}
+                              {biz.location_code} ÔÇó {biz.category}
                             </p>
                           </div>
                         </div>
@@ -607,7 +607,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                 ) : (
                   <p className="text-xs text-stone-400 italic p-3 bg-stone-50 rounded-xl border border-stone-200">
                     {isEs
-                      ? 'No has registrado negocios aún. Haz clic en "Registrar Negocio" para comenzar.'
+                      ? 'No has registrado negocios a├║n. Haz clic en "Registrar Negocio" para comenzar.'
                       : 'No businesses registered yet. Click "Register Business" to start.'}
                   </p>
                 )}
@@ -647,7 +647,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                               {isEs ? grp.name_es : grp.name_en}
                             </h5>
                             <p className="text-[11px] text-stone-500 truncate">
-                              {grp.location_code} • {grp.member_count} {isEs ? 'miembros' : 'members'}
+                              {grp.location_code} ÔÇó {grp.member_count} {isEs ? 'miembros' : 'members'}
                             </p>
                           </div>
                         </div>
@@ -661,7 +661,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                 ) : (
                   <p className="text-xs text-stone-400 italic p-3 bg-stone-50 rounded-xl border border-stone-200">
                     {isEs
-                      ? 'No has creado grupos aún. Haz clic en "Iniciar Grupo" para reunir a tu comunidad.'
+                      ? 'No has creado grupos a├║n. Haz clic en "Iniciar Grupo" para reunir a tu comunidad.'
                       : 'No groups created yet. Click "Start Group" to gather members.'}
                   </p>
                 )}
@@ -672,7 +672,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                 <div className="flex items-center justify-between">
                   <h4 className="text-xs font-bold uppercase tracking-wider text-stone-800 flex items-center gap-2">
                     <Calendar className="w-3.5 h-3.5 text-emerald-700" />
-                    <span>{isEs ? 'Eventos Organizados por Mí' : 'Events Hosted by Me'}</span>
+                    <span>{isEs ? 'Eventos Organizados por M├¡' : 'Events Hosted by Me'}</span>
                     <span className="py-0.5 px-1.5 bg-stone-100 rounded text-stone-600 text-[10px]">
                       {userCreatedContent.events.length}
                     </span>
@@ -701,7 +701,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                               {isEs ? evt.title_es : evt.title_en}
                             </h5>
                             <p className="text-[11px] text-stone-500 truncate">
-                              {new Date(evt.start_at).toLocaleDateString()} • {evt.event_location_label}
+                              {new Date(evt.start_at).toLocaleDateString()} ÔÇó {evt.event_location_label}
                             </p>
                           </div>
                         </div>
@@ -715,7 +715,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                 ) : (
                   <p className="text-xs text-stone-400 italic p-3 bg-stone-50 rounded-xl border border-stone-200">
                     {isEs
-                      ? 'No has publicado eventos aún. Haz clic en "Publicar Evento" para programar uno.'
+                      ? 'No has publicado eventos a├║n. Haz clic en "Publicar Evento" para programar uno.'
                       : 'No events published yet. Click "Publish Event" to schedule one.'}
                   </p>
                 )}
@@ -745,7 +745,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                 </div>
                 <p className="text-xs text-stone-600 leading-relaxed">
                   {isEs
-                    ? 'Aquí administras los negocios, eventos y grupos donde has dado tu consentimiento para recibir alertas directas, invitaciones e incentivos.'
+                    ? 'Aqu├¡ administras los negocios, eventos y grupos donde has dado tu consentimiento para recibir alertas directas, invitaciones e incentivos.'
                     : 'Manage the businesses, events, and clubs you opted-in to receive perks and updates from.'}
                 </p>
               </div>
@@ -765,7 +765,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                           </span>
                         </div>
                         <p className="text-[11px] text-stone-500">
-                          {isEs ? 'Incentivos activos • ' : 'Active perks • '}
+                          {isEs ? 'Incentivos activos ÔÇó ' : 'Active perks ÔÇó '}
                           {new Date(item.opted_in_at).toLocaleDateString()}
                         </p>
                       </div>
@@ -774,7 +774,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                         type="button"
                         onClick={() => handleRemoveOptIn(item.target_reference)}
                         className="p-1.5 text-stone-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors"
-                        title={isEs ? 'Cancelar suscripción' : 'Unsubscribe'}
+                        title={isEs ? 'Cancelar suscripci├│n' : 'Unsubscribe'}
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -786,12 +786,12 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                   <Bell className="w-8 h-8 mx-auto text-stone-300" />
                   <p className="text-xs">
                     {isEs
-                      ? 'No te has suscrito aún a ningún negocio o evento.'
+                      ? 'No te has suscrito a├║n a ning├║n negocio o evento.'
                       : 'You have not subscribed to any business or event yet.'}
                   </p>
                   <p className="text-[11px] text-stone-400">
                     {isEs
-                      ? 'Activa la casilla de avisos e incentivos al visitar la página de un negocio o evento.'
+                      ? 'Activa la casilla de avisos e incentivos al visitar la p├ígina de un negocio o evento.'
                       : 'Check the opt-in box on any business or event page to receive direct perks.'}
                   </p>
                 </div>
@@ -815,7 +815,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                       {isEs ? 'Favoritos' : 'Favorites'}
                     </p>
                     <p className="text-[11px]">
-                      {isEs ? 'Aún no tienes favoritos.' : 'You have not favorited any items yet.'}
+                      {isEs ? 'A├║n no tienes favoritos.' : 'You have not favorited any items yet.'}
                     </p>
                   </div>
                 );
@@ -874,7 +874,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                     </span>
                   </div>
                   <span className="text-[11px] text-stone-500">
-                    {selectedLanguage === 'es' ? 'Español seleccionado' : 'English active'}
+                    {selectedLanguage === 'es' ? 'Espa├▒ol seleccionado' : 'English active'}
                   </span>
                 </div>
 
@@ -888,7 +888,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                         : 'bg-white text-stone-700 border-stone-200 hover:bg-stone-100'
                     }`}
                   >
-                    <span>🇲🇽 Español (MX)</span>
+                    <span>­ƒç▓­ƒç¢ Espa├▒ol (MX)</span>
                     {selectedLanguage === 'es' && <Check className="w-3.5 h-3.5" />}
                   </button>
 
@@ -901,7 +901,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                         : 'bg-white text-stone-700 border-stone-200 hover:bg-stone-100'
                     }`}
                   >
-                    <span>🇺🇸 English (US)</span>
+                    <span>­ƒç║­ƒç© English (US)</span>
                     {selectedLanguage === 'en' && <Check className="w-3.5 h-3.5" />}
                   </button>
                 </div>
@@ -1153,7 +1153,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                     rows={2}
                     placeholder={
                       isEs
-                        ? 'Cuéntale a la comunidad sobre ti (residente, viajero, nómada, buceador)...'
+                        ? 'Cu├®ntale a la comunidad sobre ti (residente, viajero, n├│mada, buceador)...'
                         : 'Tell the community about yourself (resident, traveler, nomad, diver)...'
                     }
                     className="w-full p-2.5 bg-stone-50 border border-stone-200 rounded-xl text-xs sm:text-sm text-stone-900 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-teal-700/20 resize-none"
@@ -1199,7 +1199,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                       </span>
                       <span className="text-stone-500 text-[11px]">
                         {isEs
-                          ? 'Permitir consultas seguras sin exponer jamás tu correo electrónico real.'
+                          ? 'Permitir consultas seguras sin exponer jam├ís tu correo electr├│nico real.'
                           : 'Allow safe direct queries without ever revealing your real email address.'}
                       </span>
                     </div>
@@ -1237,7 +1237,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                       </span>
                       <span className="text-stone-500 text-[11px]">
                         {isEs
-                          ? 'Boletín semanal con eventos destacados, nuevos comercios y ofertas.'
+                          ? 'Bolet├¡n semanal con eventos destacados, nuevos comercios y ofertas.'
                           : 'Weekly digest with top events, new merchants, and seasonal perks.'}
                       </span>
                     </div>
@@ -1246,7 +1246,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                   {/* Granular Visibility Preferences */}
                   <div className="p-3 bg-stone-50/70 rounded-xl border border-stone-200/80 space-y-2.5">
                     <span className="text-[11px] font-bold text-stone-700 uppercase tracking-wider block">
-                      {isEs ? 'Campos Visibles en tu Perfil Público:' : 'Visible Fields on Public Profile:'}
+                      {isEs ? 'Campos Visibles en tu Perfil P├║blico:' : 'Visible Fields on Public Profile:'}
                     </span>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
                       <label className="flex items-center gap-2 cursor-pointer text-stone-700">
@@ -1274,7 +1274,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                           onChange={(e) => setShowBio(e.target.checked)}
                           className="rounded text-teal-700 focus:ring-teal-700"
                         />
-                        <span>{isEs ? 'Mostrar Biografía' : 'Show Bio'}</span>
+                        <span>{isEs ? 'Mostrar Biograf├¡a' : 'Show Bio'}</span>
                       </label>
                       <label className="flex items-center gap-2 cursor-pointer text-stone-700">
                         <input

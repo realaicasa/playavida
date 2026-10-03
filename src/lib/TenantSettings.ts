@@ -1,9 +1,9 @@
-import tenantSettings from '../../tenant-settings.json';
+﻿import tenantSettingsJson from '../../tenant-settings.json';
 
 type SettingsGroup = 'brand' | 'geography' | 'legal';
 
 class TenantSettingsService {
-  private settings: any = tenantSettings;
+  private settings: any = tenantSettingsJson;
 
   constructor() {
     // In production, this would fetch from Teable on init

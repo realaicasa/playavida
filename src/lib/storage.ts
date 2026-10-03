@@ -1,4 +1,4 @@
-import {
+﻿import {
   PublicBusinessProjection,
   PrivateBusinessContactDetails,
   BusinessSubscription,
@@ -493,7 +493,7 @@ class PlayaVidaStore {
       logo_url: data.logo_url,
       gallery_urls: data.gallery_urls || [],
       services: data.services || [],
-      languages: data.languages || ['Español'],
+      languages: data.languages || ['Espa├▒ol'],
       price_tier: data.price_tier || '$$',
       opening_hours_summary: data.opening_hours_summary,
       amenities: data.amenities || [],
@@ -1069,7 +1069,7 @@ class PlayaVidaStore {
       return {
         id: uid,
         public_reference: u?.public_reference || `USR-PDC-${uid.slice(-4).toUpperCase()}`,
-        display_name: prof.display_name || (idx === 0 ? 'Elena Solís' : 'Carlos Méndez'),
+        display_name: prof.display_name || (idx === 0 ? 'Elena Sol├¡s' : 'Carlos M├®ndez'),
         joined_at: '2026-09-15T14:30:00Z',
         has_push_opt_in: hasPush,
       };
@@ -1099,7 +1099,7 @@ class PlayaVidaStore {
       return {
         id: uid,
         public_reference: u?.public_reference || `USR-PDC-${uid.slice(-4).toUpperCase()}`,
-        display_name: prof.display_name || (idx === 0 ? 'Carlos Méndez' : 'Elena Solís'),
+        display_name: prof.display_name || (idx === 0 ? 'Carlos M├®ndez' : 'Elena Sol├¡s'),
         followed_at: '2026-09-18T10:00:00Z',
         has_push_opt_in: hasPush,
       };
@@ -1115,8 +1115,8 @@ class PlayaVidaStore {
         owner_user_id: 'usr_001',
         target_type: 'business',
         target_id: 'rec_biz_001',
-        target_name: 'Café Maya Consciente',
-        title: '¡Nueva cata de café orgánico este jueves!',
+        target_name: 'Caf├® Maya Consciente',
+        title: '┬íNueva cata de caf├® org├ínico este jueves!',
         message: 'A todos nuestros clientes y miembros fieles: 20% off en granos de Chiapas este jueves a las 6pm.',
         target_segment: 'all_members',
         recipient_count: 142,
@@ -1319,7 +1319,7 @@ class PlayaVidaStore {
 
     return {
       success: true,
-      message: `¡Sello otorgado con éxito por ${validStaff.display_name}! Balance actual: ${card.stamps_count}`,
+      message: `┬íSello otorgado con ├®xito por ${validStaff.display_name}! Balance actual: ${card.stamps_count}`,
       vouchersIssued: newVouchers,
     };
   }
@@ -1369,14 +1369,14 @@ class PlayaVidaStore {
       reward_tiers: [
         { threshold: 10, reward_es: 'Bebida de especialidad gratis', reward_en: 'Free specialty drink', reward_type: 'drink' },
         { threshold: 20, reward_es: '20% de descuento en tu cuenta total', reward_en: '20% off entire bill', reward_type: 'discount' },
-        { threshold: 50, reward_es: 'Experiencia VIP de degustación', reward_en: 'VIP tasting experience', reward_type: 'experience' },
+        { threshold: 50, reward_es: 'Experiencia VIP de degustaci├│n', reward_en: 'VIP tasting experience', reward_type: 'experience' },
       ],
       bonus_features: [
         {
           id: `bonus_${Date.now()}_1`,
           title_es: 'Foto de Arte Latte / Topping',
           title_en: 'Latte Art / Topping Photo',
-          description_es: 'Sube una foto de la decoración o arte latte de tu bebida para obtener un sello extra.',
+          description_es: 'Sube una foto de la decoraci├│n o arte latte de tu bebida para obtener un sello extra.',
           description_en: 'Upload a photo of your latte art or topping to earn a bonus stamp.',
           extra_stamps: 1,
           bonus_stamps: 1,
@@ -1450,12 +1450,12 @@ class PlayaVidaStore {
     const programs = this.getLoyaltyPrograms();
     const prog = programs.find((p) => p.id === programId);
     if (!prog || !prog.bonus_features) {
-      return { success: false, message: 'Programa o misión no encontrados.', stampsAwarded: 0 };
+      return { success: false, message: 'Programa o misi├│n no encontrados.', stampsAwarded: 0 };
     }
 
     const bonus = prog.bonus_features.find((b) => b.id === bonusId && b.active);
     if (!bonus) {
-      return { success: false, message: 'Misión no disponible o inactiva.', stampsAwarded: 0 };
+      return { success: false, message: 'Misi├│n no disponible o inactiva.', stampsAwarded: 0 };
     }
 
     // Ensure customer has enrolled card
@@ -1521,7 +1521,7 @@ class PlayaVidaStore {
 
     return {
       success: true,
-      message: `¡Felicidades! Se han agregado +${stampsToAdd} sello(s) a tu tarjeta de ${prog.business_name}.`,
+      message: `┬íFelicidades! Se han agregado +${stampsToAdd} sello(s) a tu tarjeta de ${prog.business_name}.`,
       stampsAwarded: stampsToAdd,
     };
   }
@@ -1657,7 +1657,7 @@ class PlayaVidaStore {
       name_es: trimmed,
       name_en: trimmed,
       region,
-      country: 'México',
+      country: 'M├®xico',
       timezone: 'America/Cancun',
     };
 
@@ -1715,3 +1715,13 @@ class PlayaVidaStore {
 }
 
 export const playaVidaStore = new PlayaVidaStore();
+
+// Test-only helper to directly set storage values for test fixtures
+// Not used by any application/UI code
+export function setTestStorage<T>(key: string, data: T): void {
+  setStorage(key, data);
+}
+
+export function getTestStorage<T>(key: string, fallback: T): T {
+  return getStorage(key, fallback);
+}
