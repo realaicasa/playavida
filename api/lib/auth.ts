@@ -16,8 +16,8 @@ export async function validateSession(sessionId: string): Promise<{ valid: boole
 
   try {
     const teable = getTeableClient();
-    const sessionRecords = await teable.listRecords('tbl_sessions', {
-      filter: `session_id = "${sessionId}" AND expires_at >= "${new Date().toISOString()}"`,
+    const sessionRecords = await teable.listRecords('tblap3ykSwQQk276MdN', {
+      filter: `session_token_hash = "${sessionId}" AND expires_at >= "${new Date().toISOString()}"`,
       maxRecords: 1,
     });
 
@@ -30,11 +30,11 @@ export async function validateSession(sessionId: string): Promise<{ valid: boole
 
     // Update last accessed
     try {
-      await teable.updateRecord('tbl_sessions', sessionRecord.id, {
-        last_accessed_at: new Date().toISOString(),
+      await teable.updateRecord('tblap3ykSwQQk276MdN', sessionRecord.id, {
+        last_seen_at: new Date().toISOString(),
       });
     } catch (e) {
-      console.warn('Failed to update session last_accessed:', e);
+      console.warn('Failed to update session last_seen:', e);
     }
 
     const roles = JSON.parse(sessionFields.roles || '["member"]');

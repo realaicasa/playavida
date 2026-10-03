@@ -25,13 +25,13 @@ export default async function handler(
 
       // Delete session server-side
       try {
-        const sessionRecords = await teable.listRecords('tbl_sessions', {
-          filter: `session_id = "${sessionId}"`,
+        const sessionRecords = await teable.listRecords('tblap3ykSwQQk276MdN', {
+          filter: `session_token_hash = "${sessionId}"`,
           maxRecords: 1,
         });
 
         if (sessionRecords.records.length > 0) {
-          await teable.deleteRecord('tbl_sessions', sessionRecords.records[0].id);
+          await teable.deleteRecord('tblap3ykSwQQk276MdN', sessionRecords.records[0].id);
         }
       } catch (e) {
         console.warn('Failed to delete session:', e);

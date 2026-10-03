@@ -1,42 +1,6 @@
 import { getTeableClient } from '../lib/teable';
 import crypto from 'crypto';
 
-const OTP_MAX_VERIFY_ATTEMPTS = parseInt(process.env.OTP_MAX_VERIFY_ATTEMPTS || '5', 10);
-
-const USERS_TABLE_ID = process.env.TEABLE_TABLE_USERS || 'tblB6Wiwy4KOx3Tjgui';
-
-async function verifyOTPHash(code: string, storedHash: string): Promise<boolean> {
-  const [salt, hash] = storedHash.split(':');
-  const verifyHash = crypto.pbkdf2Sync(code, salt, 100000, 64, 'sha512').toString('hex');
-  return crypto.timingSafeEqual(Buffer.from(hash), Buffer.from(verifyHash));
-}
-
-function getEmailHash(email: string): string {
-  return crypto.createHash('sha256').update(email.toLowerCase().trim()).digest('hex');
-}
-
-function generateSessionId(): string {
-  return crypto.randomBytes(32).toString('hex');
-}
-
-async function createSession(teable: any, userId: string, roles: string[], businessOwnerships: string[], staffAssignments: any[]): Promise<string> {
-  const sessionId = generateSessionId();
-  const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
-
-  await teable.createRecord('tbl_sessions', {
-    session_id: sessionId,
-    user_id: userId,
-    roles: JSON.stringify(['member']), // Default role
-    business_ownerships: JSON.stringify([]),
-    staff_assignments: JSON.stringify([]),
-    expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-    created_at: new Date().toISOString(),
-    last_accessed_at: new Date().toISOString(),
-  });
-
-  return sessionId;
-}
-
 export default async function handler(
   request: Request,
   response: {
@@ -74,8 +38,8 @@ export default async function handler(
     // Find valid OTP
     let otpRecord;
     try {
-      const otpRecords = await teable.listRecords('tbl_otp_codes', {
-        filter: `email_hash = "${getEmailHash(email)}" AND used = false AND expires_at >= "${new Date().toISOString()}"`,
+      const otpRecords = await teable.listRecords('tblVe1AhQ3zLW3eijnw', {
+        filter: `email_hash = "${emailHash}" AND status = "issued" AND expires_at >= "${new Date().toISOString()}"`,
         maxRecords: 1,
         sort: '-created_at',
       });
@@ -97,21 +61,27 @@ export default async function handler(
     const otpFields = otpRecord.fields as any;
 
     // Check attempts
-    if (otpFields.attempts >= 5) {
+    if ((otpFields.attempt_count || 0) >= 5) {
       response.setHeader('Content-Type', 'application/json');
       response.status(429).json({ ok: false, code: 'RATE_LIMITED' });
       return;
     }
 
     // Verify OTP
-    const codeHash = otpRecord.fields.code_hash as string;
-    const [salt, hash] = codeHash.split(':');
+    const storedHash = otpRecord.fields.code_hash as string;
+    if (!storedHash) {
+      response.setHeader('Content-Type', 'application/json');
+      response.status(400).json({ ok: false, code: 'INVALID_CODE' });
+      return;
+    }
+
+    const [salt, hash] = storedHash.split(':');
     const verifyHash = crypto.pbkdf2Sync(code, salt, 100000, 64, 'sha512').toString('hex');
 
     if (!crypto.timingSafeEqual(Buffer.from(hash), Buffer.from(verifyHash))) {
       // Increment attempts
-      await teable.updateRecord('tbl_otp_codes', otpRecord.id, {
-        attempts: (otpFields.attempts || 0) + 1,
+      await teable.updateRecord('tblVe1AhQ3zLW3eijnw', otpRecord.id, {
+        attempt_count: (otpFields.attempt_count || 0) + 1,
       });
 
       response.setHeader('Content-Type', 'application/json');
@@ -119,10 +89,10 @@ export default async function handler(
       return;
     }
 
-    // Mark OTP as used
-    await teable.updateRecord('tbl_otp_codes', otpRecord.id, {
-      used: true,
-      used_at: new Date().toISOString(),
+    // Mark OTP as consumed
+    await teable.updateRecord('tblVe1AhQ3zLW3eijnw', otpRecord.id, {
+      status: 'consumed',
+      consumed_at: new Date().toISOString(),
     });
 
     // Find or create user
@@ -187,18 +157,19 @@ export default async function handler(
 
     // Create session
     const sessionId = crypto.randomBytes(32).toString('hex');
+    const sessionTokenHash = crypto.randomBytes(32).toString('hex');
     const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
 
     try {
-      await teable.createRecord('tbl_sessions', {
-        session_id: sessionId,
+      await teable.createRecord('tblap3ykSwQQk276MdN', {
+        session_token_hash: sessionId,
         user_id: userId,
         roles: JSON.stringify(roles),
         business_ownerships: JSON.stringify(businessOwnerships),
         staff_assignments: JSON.stringify([]),
         expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
         created_at: new Date().toISOString(),
-        last_accessed_at: new Date().toISOString(),
+        last_seen_at: new Date().toISOString(),
       });
     } catch (e) {
       console.error('Failed to create session:', e);
@@ -207,14 +178,27 @@ export default async function handler(
       return;
     }
 
-    // Set session cookie
-    const cookieValue = `session_id=${sessionId}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=${30 * 24 * 60 * 60}`;
+    // Get user public reference
+    let publicReference = '';
+    try {
+      const userRecords = await teable.listRecords('tblB6Wiwy4KOx3Tjgui', {
+        filter: `id = "${userId}"`,
+        maxRecords: 1,
+      });
+      if (userRecords.records.length > 0) {
+        publicReference = (userRecords.records[0].fields.public_reference as string) || '';
+      }
+    } catch (e) {
+      console.warn('Failed to fetch user public reference:', e);
+    }
 
+    // Set session cookie
     response.setHeader('Content-Type', 'application/json');
-    response.setHeader('Set-Cookie', cookieValue);
+    response.setHeader('Set-Cookie', `session_id=${sessionId}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=${30 * 24 * 60 * 60}`);
     response.status(200).json({
       authenticated: true,
       userId,
+      public_reference: publicReference,
       roles: ['member'],
       businessOwnerships: [],
       staffAssignments: [],
@@ -225,4 +209,8 @@ export default async function handler(
     response.setHeader('Content-Type', 'application/json');
     response.status(500).json({ ok: false, code: 'INTERNAL_ERROR' });
   }
+}
+
+function getEmailHash(email: string): string {
+  return crypto.createHash('sha256').update(email.toLowerCase().trim()).digest('hex');
 }

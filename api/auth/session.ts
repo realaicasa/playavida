@@ -31,8 +31,8 @@ export default async function handler(
     // Validate session
     let sessionRecord;
     try {
-      const sessionRecords = await teable.listRecords('tbl_sessions', {
-        filter: `session_id = "${sessionId}" AND expires_at >= "${new Date().toISOString()}"`,
+      const sessionRecords = await teable.listRecords('tblap3ykSwQQk276MdN', {
+        filter: `session_token_hash = "${sessionId}" AND expires_at >= "${new Date().toISOString()}"`,
         maxRecords: 1,
       });
 
@@ -52,23 +52,38 @@ export default async function handler(
 
     const sessionFields = sessionRecord.fields as any;
 
-    // Update last accessed
+    // Update last seen
     try {
-      await teable.updateRecord('tbl_sessions', sessionRecord.id, {
-        last_accessed_at: new Date().toISOString(),
+      await teable.updateRecord('tblap3ykSwQQk276MdN', sessionRecord.id, {
+        last_seen_at: new Date().toISOString(),
       });
     } catch (e) {
-      console.warn('Failed to update session last_accessed:', e);
+      console.warn('Failed to update session last_seen:', e);
     }
 
     const roles = JSON.parse(sessionFields.roles || '["member"]');
     const businessOwnerships = JSON.parse(sessionFields.business_ownerships || '[]');
     const staffAssignments = JSON.parse(sessionFields.staff_assignments || '[]');
 
+    // Get user public reference
+    let publicReference = '';
+    try {
+      const userRecords = await teable.listRecords('tblB6Wiwy4KOx3Tjgui', {
+        filter: `id = "${sessionFields.user_id}"`,
+        maxRecords: 1,
+      });
+      if (userRecords.records.length > 0) {
+        publicReference = (userRecords.records[0].fields.public_reference as string) || '';
+      }
+    } catch (e) {
+      console.warn('Failed to fetch user public reference:', e);
+    }
+
     response.setHeader('Content-Type', 'application/json');
     response.status(200).json({
       authenticated: true,
       userId: sessionFields.user_id,
+      public_reference: publicReference,
       roles,
       businessOwnerships,
       staffAssignments,
