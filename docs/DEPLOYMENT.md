@@ -143,10 +143,28 @@ Future `GET /api/auth/session` should return:
 ### Recommended Implementation Order (Max 6 Milestones)
 1. Design decision: auth provider (Resend OTP), session format, cookie policy
 2. Minimum server identity/session: OTP send/verify, cookie issuance, `/api/auth/session`
-2. Server-side ownership/entitlement middleware
-3. Business owner UI connected to real APIs
-4. Staff/loyalty PIN validation via server
-5. Platform admin role + dashboard (only after 1-4 verified)
+3. Server-side ownership/entitlement middleware
+4. Business owner UI connected to real APIs
+5. Staff/loyalty PIN validation via server
+6. Platform admin role + dashboard (only after 1-4 verified)
+
+## Identity & Session Design Decision (REBUILD-007 — completed locally)
+
+A formal design decision record for the first real authentication implementation phase has been recorded in `docs/IDENTITY_SESSION_DECISION.md`. Key deployment-relevant decisions:
+
+- **Provider**: Resend for OTP email delivery (API key required in production)
+- **Session cookie**: `HttpOnly; Secure; SameSite=Lax; Path=/` — requires HTTPS in production
+- **Cookie name**: `session_id` (opaque server-managed ID)
+- **Expiry**: 30 days absolute, 24 hours idle; rolling renewal on authenticated requests
+- **Revocation**: Immediate server-side deletion on logout, role change, security event
+- **Rate limits**: OTP endpoints — 5 req/hour per email, 20 req/hour per IP
+- **No client-side secrets**: No JWT, bearer tokens, or OTP codes in browser storage
+- **Migration**: Demo auto-login (`DEMO_USERS[0]`) must be removed before production release
+
+### Required Environment Variables (Future Auth Phase)
+- `RESEND_API_KEY` — for OTP email delivery
+- `SESSION_SECRET` — for session ID signing/encryption
+- `OTP_SECRET` — for OTP hash pepper (optional defense-in-depth)
 
 ## Rollback
 - Vercel instant rollback via dashboard

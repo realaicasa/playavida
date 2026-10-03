@@ -46,6 +46,17 @@
 - Produced minimum design brief for future real auth/authorization phase
 - **No source changes** — discovery and documentation only
 
+### REBUILD-007 — Identity and Session Design Decision Record ✓ (completed locally)
+- Passwordless email OTP identity method confirmed
+- Server-side session model with secure HttpOnly cookies confirmed
+- OTP: 6-digit, 10-min expiry, bcrypt hash, 5 req/hour rate limit, anti-enumeration
+- Sessions: Member/owner 30d/24h, Staff 12h/60min, Superadmin 8h/20min with step-up
+- Cookies: Secure, HttpOnly, SameSite=Lax, host-only
+- OTP lifecycle, session model, API contracts, privacy boundaries, authorization model defined
+- Server-side enforcement required for all sensitive actions
+- No hard-coded auth, no client-only boundaries, test-account guard preserved
+- Seven ordered follow-on tickets identified for implementation
+
 ---
 
 ## Backlog (Post-Phase 0)
