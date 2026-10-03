@@ -42,7 +42,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.code === 'RATE_LIMITED' ? 'Demasiados intentos. Intenta más tarde.' : 'Error al enviar el código');
+        setError(data.error ? `${data.code}: ${data.error}` : (data.code === 'RATE_LIMITED' ? 'Demasiados intentos. Intenta más tarde.' : 'Error al enviar el código'));
         setIsLoading(false);
         return;
       }
@@ -73,8 +73,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.code === 'RATE_LIMITED' ? 'Demasiados intentos. Intenta más tarde.' : 
-                 data.code === 'OTP_EXPIRED' ? 'El código ha expirado. Solicita uno nuevo.' : 'Código inválido');
+        setError(data.error ? `${data.code}: ${data.error}` : (data.code === 'RATE_LIMITED' ? 'Demasiados intentos. Intenta más tarde.' : 
+                 data.code === 'OTP_EXPIRED' ? 'El código ha expirado. Solicita uno nuevo.' : 'Código inválido'));
         setIsLoading(false);
         return;
       }
