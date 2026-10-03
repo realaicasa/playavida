@@ -28,6 +28,8 @@ src/
 È÷÷È÷ÃÈ÷Ã tests/security.test.ts  # Security boundary validation
 api/
 È÷÷È÷ÃÈ÷Ã health.ts               # Minimal health endpoint (REBUILD-002)
+È÷÷È÷ÃÈ÷Ã auth/
+È÷÷È÷ÃÈ÷Ã   È÷÷È÷ÃÈ÷Ã session.ts          # Minimal unauthenticated session endpoint (REBUILD-004)
 ```
 
 ## Data Layer (Current - Mock)
