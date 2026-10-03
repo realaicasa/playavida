@@ -1,0 +1,6 @@
+{
+  "name": "PlayaVida",
+  "description": "Bilingual community & local discovery PWA for Playa del Carmen and Riviera Maya with direct business contact access, events, native loyalty cards, and regional discovery.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
