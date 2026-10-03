@@ -33,7 +33,7 @@ export default async function handler(
     }
 
     const teable = getTeableClient();
-    const emailHash = getEmailHash(email);
+    const emailHash = crypto.createHash('sha256').update(email.toLowerCase().trim()).digest('hex');
 
     // Find valid OTP
     let otpRecord;
@@ -51,10 +51,10 @@ export default async function handler(
       }
 
       otpRecord = otpRecords.records[0];
-    } catch (e) {
-      console.error('Failed to fetch OTP:', e);
+    } catch (e: any) {
+      console.error('Failed to fetch OTP:', e?.message || e);
       response.setHeader('Content-Type', 'application/json');
-      response.status(400).json({ ok: false, code: 'INVALID_CODE' });
+      response.status(500).json({ ok: false, code: 'OTP_FETCH_FAILED', error: e?.message || 'Unknown error' });
       return;
     }
 
@@ -114,10 +114,10 @@ export default async function handler(
       } else {
         userRecord = userRecords.records[0];
       }
-    } catch (e) {
-      console.error('Failed to find/create user:', e);
+    } catch (e: any) {
+      console.error('Failed to find/create user:', e?.message || e);
       response.setHeader('Content-Type', 'application/json');
-      response.status(500).json({ ok: false, code: 'INTERNAL_ERROR' });
+      response.status(500).json({ ok: false, code: 'USER_CREATE_FAILED', error: e?.message || 'Unknown error' });
       return;
     }
 
@@ -171,10 +171,10 @@ export default async function handler(
         created_at: new Date().toISOString(),
         last_seen_at: new Date().toISOString(),
       });
-    } catch (e) {
-      console.error('Failed to create session:', e);
+    } catch (e: any) {
+      console.error('Failed to create session:', e?.message || e);
       response.setHeader('Content-Type', 'application/json');
-      response.status(500).json({ ok: false, code: 'INTERNAL_ERROR' });
+      response.status(500).json({ ok: false, code: 'SESSION_CREATE_FAILED', error: e?.message || 'Unknown error' });
       return;
     }
 
@@ -204,10 +204,10 @@ export default async function handler(
       staffAssignments: [],
       exp: Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60,
     });
-  } catch (error) {
-    console.error('OTP verify error:', error);
+  } catch (error: any) {
+    console.error('OTP verify error:', error?.message || error);
     response.setHeader('Content-Type', 'application/json');
-    response.status(500).json({ ok: false, code: 'INTERNAL_ERROR' });
+    response.status(500).json({ ok: false, code: 'INTERNAL_ERROR', error: error?.message || 'Unknown error' });
   }
 }
 

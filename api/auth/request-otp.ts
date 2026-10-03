@@ -42,8 +42,9 @@ export default async function handler(
         response.status(429).json({ ok: false, code: 'RATE_LIMITED' });
         return;
       }
-    } catch (e) {
-      console.warn('OTP rate limit check failed:', e);
+    } catch (e: any) {
+      console.warn('OTP rate limit check failed:', e?.message || e);
+      // Don't fail on rate limit check, just log it
     }
 
     // Generate OTP
@@ -63,24 +64,30 @@ export default async function handler(
         status: 'issued',
         created_at: new Date().toISOString(),
       });
-    } catch (e) {
-      console.error('Failed to store OTP:', e);
+    } catch (e: any) {
+      console.error('Failed to store OTP:', e?.message || e);
+      response.setHeader('Content-Type', 'application/json');
+      response.status(500).json({ ok: false, code: 'OTP_STORE_FAILED', error: e?.message || 'Unknown error' });
+      return;
     }
 
     // Send email (non-blocking - don't fail if email fails)
     try {
       await sendOTPEmail(email, code);
-    } catch (e) {
-      console.error('Failed to send OTP email:', e);
+    } catch (e: any) {
+      console.error('Failed to send OTP email:', e?.message || e);
+      response.setHeader('Content-Type', 'application/json');
+      response.status(500).json({ ok: false, code: 'EMAIL_SEND_FAILED', error: e?.message || 'Unknown error' });
+      return;
     }
 
     // Always return success to prevent email enumeration
     response.setHeader('Content-Type', 'application/json');
     response.status(200).json({ ok: true });
-  } catch (error) {
-    console.error('OTP request error:', error);
+  } catch (error: any) {
+    console.error('OTP request error:', error?.message || error);
     response.setHeader('Content-Type', 'application/json');
-    response.status(500).json({ ok: false, code: 'INTERNAL_ERROR' });
+    response.status(500).json({ ok: false, code: 'INTERNAL_ERROR', error: error?.message || 'Unknown error' });
   }
 }
 
