@@ -40,6 +40,12 @@
 - Deploy behind existing domain only after Phase 0 approval
 - **Next**: Vercel Preview deployment verification
 
+### REBUILD-006 — Identity and Authorization Design Inventory ✓ (completed locally)
+- Read-only inventory of identity, account, role, and authorization assumptions in source
+- Documented current mock/localStorage auth, role model, ownership checks, and server-side boundary requirements
+- Produced minimum design brief for future real auth/authorization phase
+- **No source changes** — discovery and documentation only
+
 ---
 
 ## Backlog (Post-Phase 0)

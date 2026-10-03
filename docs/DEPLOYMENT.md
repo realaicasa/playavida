@@ -103,6 +103,51 @@ dist/
 - **No auth, no DB, no external deps, no env vars, static response**
 - **Vercel Preview deployment verification pending** ÈÃ÷ do not claim endpoint is live until explicitly confirmed
 
+## Identity & Authorization Design Inventory (REBUILD-006 ÈÃ÷ completed locally)
+
+### Current Mock Implementation
+- **Auth layer**: None — `GET /api/auth/session` returns `{ authenticated: false }`
+- **Session storage**: `localStorage` key `playavida_current_user_id` (UI-only)
+- **Login/OTP**: `src/lib/storage.ts` mock functions; fixed code `774921`
+- **Roles**: Type exists (`member`, `business_owner`, `staff`, `moderator`, `admin`); no admin seeded
+- **Ownership**: `created_by_user_id` match in localStorage (mock)
+- **Staff PINs**: Static `INITIAL_STAFF_ACCOUNTS` with test account `STF-TEST-A` (pin `1234`)
+- **Contact entitlement**: Mock subscription status in localStorage
+
+### Required Server-Side Boundaries (Future)
+| Decision | Must Be Server-Side |
+|----------|---------------------|
+| User authentication | Yes — Resend OTP + secure cookies |
+| Session validation | Yes — cookie/JWT verification |
+| Business ownership | Yes — Teable record match |
+| Staff authorization | Yes — staff record + PIN in Teable |
+| Contact entitlement | Yes — subscription + active status in Teable |
+| Platform admin role | Yes — explicit role assignment in Teable |
+
+### Session Contract (High Level)
+Future `GET /api/auth/session` should return:
+- `authenticated: boolean`
+- `userId: string`
+- `roles: string[]`
+- `businessOwnerships: string[]` (IDs)
+- `staffAssignments: { businessId, role }[]`
+- `exp: number` (expiry)
+
+### Superadmin Conclusion
+- Platform-admin dashboard must remain absent until server-enforced admin identity exists.
+- Distinct from: business owner (owns business), staff (assigned to business), coordinator (owns group), member (no elevated role).
+
+### Test-Account Guard
+- `STF-TEST-A` exists only in `INITIAL_STAFF_ACCOUNTS` for `security.test.ts`; no prod path references it.
+
+### Recommended Implementation Order (Max 6 Milestones)
+1. Design decision: auth provider (Resend OTP), session format, cookie policy
+2. Minimum server identity/session: OTP send/verify, cookie issuance, `/api/auth/session`
+2. Server-side ownership/entitlement middleware
+3. Business owner UI connected to real APIs
+4. Staff/loyalty PIN validation via server
+5. Platform admin role + dashboard (only after 1-4 verified)
+
 ## Rollback
 - Vercel instant rollback via dashboard
 - Database migrations: forward-only (Teable schema changes)

@@ -59,6 +59,55 @@ api/
 5. User blocks strictly filtered
 6. Loyalty stamps require valid staff PIN
 
+## Identity & Authorization Inventory (REBUILD-006)
+
+### Current State (Phase 0 — Mock Only)
+
+| Concept | Source | Implementation | Enforcement |
+|---------|--------|----------------|-------------|
+| `UserRole` type | `src/types/index.ts:17` | `'member' \| 'business_owner' \| 'staff' \| 'moderator' \| 'admin'` | Type-only; no runtime enforcement |
+| `currentUser` state | `src/App.tsx:87` | `useState` initialized from `DEMO_USERS[0]` | UI-only; no auth layer |
+| `loginWithOtp` / `verifyOtpAndLogin` | `src/lib/storage.ts:140-169` | Mock OTP (`774921`); writes `CURRENT_USER_ID` to localStorage | **UI-only**; no server validation |
+| `authenticateWithEmail` | `src/lib/storage.ts:171-195` | Auto-creates user on first email; writes to localStorage | **UI-only** |
+| `logout` | `src/lib/storage.ts:290` | Clears `CURRENT_USER_ID` from localStorage | **UI-only** |
+| Owner checks (`created_by_user_id === currentUser.id`) | `src/lib/storage.ts:620,639` | In-memory comparison | **Mock**; no server enforcement |
+| Staff PIN validation | `src/lib/storage.ts:1263` | `INITIAL_STAFF_ACCOUNTS.find(s => s.pin_code === staffPin)` | **Mock**; PINs in static data |
+| `getAuthorizedContactDetails` | `src/lib/storage.ts:559-612` | Returns `login_required` / `locked` / `available` | **Mock**; no real session/entitlement |
+| Role checks (`currentUser?.role === 'admin'`) | Multiple components | Type check only | **UI-only**; no admin user seeded |
+
+### Authorization Classifications
+
+| Mechanism | Current State | Future Boundary |
+|-----------|---------------|-----------------|
+| Member authentication | Mock (localStorage + DEMO_USERS) | **Server-side** (Resend OTP + secure cookies) |
+| Business owner actions | `created_by_user_id` match in storage | **Server-side** (ownership in Teable) |
+| Staff operations (loyalty stamps) | PIN check vs `INITIAL_STAFF_ACCOUNTS` | **Server-side** (staff record + PIN in Teable) |
+| Contact visibility | Mock subscription status in storage | **Server-side** (entitlement + subscription) |
+| Group coordination | `owner_user_id` match | **Server-side** |
+| Platform admin (`role === 'admin'`) | Type exists; no user seeded; no dashboard | **Server-side**; platform-admin only |
+
+### Key Architectural Boundaries
+
+1. **Client-side checks are UX only** — all `currentUser?.role` checks, owner matches, subscription status reads must be re-validated server-side.
+2. **No session exists** — `GET /api/auth/session` returns `{ authenticated: false }`; no cookies, JWT, or tokens.
+3. **No real auth layer** — `loginWithOtp`, `verifyOtpAndLogin`, `authenticateWithEmail` write to localStorage only.
+4. **Staff PINs in static data** — `STF-TEST-A` (pin `1234`) exists only in `INITIAL_STAFF_ACCOUNTS` for tests; no staff management UI.
+
+### Superadmin Conclusion
+
+- No Superadmin dashboard/component/route exists.
+- `UserRole` includes `'admin'` but no admin user is seeded.
+- Platform-admin access **must remain absent** until:
+  - Real identity/session layer exists (server-validated)
+  - Server-enforced admin role assignment exists
+  - Separate platform-admin UI is explicitly designed and approved
+
+### Test-Account Guard
+
+- `STF-TEST-A` (staff reference, pin `1234`) exists only in `src/lib/constants.ts:223` (`INITIAL_STAFF_ACCOUNTS`) and is used only by `security.test.ts`.
+- No production source path imports or exposes this test account.
+- **Safe** — internal to test fixtures only.
+
 ## Future Server Architecture (Post-Phase 0)
 - **API Layer**: Secure server routes (not in Phase 0)
 - **Auth**: Email OTP via Resend, session cookies
