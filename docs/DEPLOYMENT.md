@@ -96,6 +96,13 @@ dist/
 - **No auth, no DB, no external deps, no env vars, static response**
 - **Vercel Preview deployment verification pending** ÈÃ÷ do not claim endpoint is live until explicitly confirmed
 
+## Logout Endpoint (REBUILD-005 ÈÃ÷ completed locally)
+- **Endpoint**: `POST /api/auth/logout`
+- **Response**: `{ "authenticated": false }`
+- **Non-POST**: 405 `{ "ok": false, "code": "METHOD_NOT_ALLOWED" }`
+- **No auth, no DB, no external deps, no env vars, static response**
+- **Vercel Preview deployment verification pending** ÈÃ÷ do not claim endpoint is live until explicitly confirmed
+
 ## Rollback
 - Vercel instant rollback via dashboard
 - Database migrations: forward-only (Teable schema changes)

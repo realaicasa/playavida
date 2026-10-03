@@ -30,6 +30,7 @@ api/
 È÷÷È÷ÃÈ÷Ã health.ts               # Minimal health endpoint (REBUILD-002)
 È÷÷È÷ÃÈ÷Ã auth/
 È÷÷È÷ÃÈ÷Ã   È÷÷È÷ÃÈ÷Ã session.ts          # Minimal unauthenticated session endpoint (REBUILD-004)
+È÷÷È÷ÃÈ÷Ã   È÷÷È÷ÃÈ÷Ã logout.ts           # Minimal stateless logout endpoint (REBUILD-005)
 ```
 
 ## Data Layer (Current - Mock)

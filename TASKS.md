@@ -34,14 +34,20 @@
 - Deploy behind existing domain only after Phase 0 approval
 - **Next**: Vercel Preview deployment verification
 
+### REBUILD-005 — Minimal Stateless Logout Endpoint ✓ (completed locally)
+- Added `/api/auth/logout` endpoint returning `{ authenticated: false }` on POST
+- No auth, no DB, no external deps, no env vars, static response
+- Deploy behind existing domain only after Phase 0 approval
+- **Next**: Vercel Preview deployment verification
+
 ---
 
 ## Backlog (Post-Phase 0)
 
 - REBUILD-003: Auth OTP flow (Email → Resend)
-- REBUILD-005: Teable sync service (server-only)
-- REBUILD-006: Stripe webhook handler
-- REBUILD-007: Business public projection API
-- REBUILD-008: Contact entitlement enforcement API
-- REBUILD-009: Loyalty ledger append-only API
-- REBUILD-010: Superadmin approval workflow for Community Initiatives
+- REBUILD-006: Teable sync service (server-only)
+- REBUILD-007: Stripe webhook handler
+- REBUILD-008: Business public projection API
+- REBUILD-009: Contact entitlement enforcement API
+- REBUILD-010: Loyalty ledger append-only API
+- REBUILD-011: Superadmin approval workflow for Community Initiatives
