@@ -46,6 +46,14 @@ function jsonResponse(res: { setHeader: (name: string, value: string) => void; s
   res.status(status).json(body);
 }
 
+// Global error handler - ensures ALL responses are JSON
+function handleError(res: typeof response, error: any, context: string): void {
+  console.error('Error in ' + context + ':', error?.message || error);
+  const message = error?.message || 'Unknown error';
+  res.setHeader('Content-Type', 'application/json');
+  res.status(500).json({ ok: false, code: 'INTERNAL_ERROR', error: message });
+}
+
 export default async function handler(
   request: Request,
   response: {
@@ -53,9 +61,9 @@ export default async function handler(
     status: (code: number) => { json: (body: object) => void };
   }
 ): Promise<void> {
-  const jsonResponse = (res: typeof response, status: number, body: object) => {
-    res.setHeader('Content-Type', 'application/json');
-    res.status(status).json(body);
+  const jsonResponse = (status: number, body: object) => {
+    response.setHeader('Content-Type', 'application/json');
+    response.status(status).json(body);
   };
 
   if (request.method !== 'POST') {
@@ -76,7 +84,6 @@ export default async function handler(
       return jsonResponse(response, 400, { ok: false, code: 'INVALID_EMAIL' });
     }
 
-    // Initialize Teable client inside try block to catch config errors
     let teable;
     try {
       teable = getTeableClient();
