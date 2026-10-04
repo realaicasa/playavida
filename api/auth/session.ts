@@ -7,11 +7,13 @@ export default async function handler(
     status: (code: number) => { json: (body: object) => void };
   }
 ): Promise<void> {
-  if (request.method !== 'GET') {
+  const jsonResponse = (status: number, body: object) => {
     response.setHeader('Content-Type', 'application/json');
-    response.setHeader('Allow', 'GET');
-    response.status(405).json({ ok: false, code: 'METHOD_NOT_ALLOWED' });
-    return;
+    response.status(status).json(body);
+  };
+
+  if (request.method !== 'GET') {
+    return jsonResponse(405, { ok: false, code: 'METHOD_NOT_ALLOWED' });
   }
 
   try {
@@ -21,9 +23,7 @@ export default async function handler(
     const sessionId = sessionMatch?.[1];
 
     if (!sessionId) {
-      response.setHeader('Content-Type', 'application/json');
-      response.status(200).json({ authenticated: false });
-      return;
+      return jsonResponse(200, { authenticated: false });
     }
 
     const teable = getTeableClient();
@@ -37,17 +37,13 @@ export default async function handler(
       });
 
       if (sessionRecords.records.length === 0) {
-        response.setHeader('Content-Type', 'application/json');
-        response.status(200).json({ authenticated: false });
-        return;
+        return jsonResponse(200, { authenticated: false });
       }
 
       sessionRecord = sessionRecords.records[0];
-    } catch (e) {
-      console.error('Session validation error:', e);
-      response.setHeader('Content-Type', 'application/json');
-      response.status(200).json({ authenticated: false });
-      return;
+    } catch (e: any) {
+      console.error('Session validation error:', e?.message || e);
+      return jsonResponse(200, { authenticated: false });
     }
 
     const sessionFields = sessionRecord.fields as any;
@@ -79,8 +75,7 @@ export default async function handler(
       console.warn('Failed to fetch user public reference:', e);
     }
 
-    response.setHeader('Content-Type', 'application/json');
-    response.status(200).json({
+    return jsonResponse(200, {
       authenticated: true,
       userId: sessionFields.user_id,
       public_reference: publicReference,
@@ -89,9 +84,13 @@ export default async function handler(
       staffAssignments,
       exp: Math.floor(new Date(sessionFields.expires_at).getTime() / 1000),
     });
-  } catch (error) {
-    console.error('Session validation error:', error);
-    response.setHeader('Content-Type', 'application/json');
-    response.status(200).json({ authenticated: false });
+  } catch (error: any) {
+    console.error('Session validation error:', error?.message || error);
+    return jsonResponse(200, { authenticated: false });
   }
+}
+
+function jsonResponse(status: number, body: object) {
+  // This is a placeholder - the actual response handling is inline above
+  return;
 }

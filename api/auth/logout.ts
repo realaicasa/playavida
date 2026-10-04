@@ -7,11 +7,13 @@ export default async function handler(
     status: (code: number) => { json: (body: object) => void };
   }
 ): Promise<void> {
-  if (request.method !== 'POST') {
+  const jsonResponse = (status: number, body: object) => {
     response.setHeader('Content-Type', 'application/json');
-    response.setHeader('Allow', 'POST');
-    response.status(405).json({ ok: false, code: 'METHOD_NOT_ALLOWED' });
-    return;
+    response.status(status).json(body);
+  };
+
+  if (request.method !== 'POST') {
+    return jsonResponse(405, { ok: false, code: 'METHOD_NOT_ALLOWED' });
   }
 
   try {
@@ -33,18 +35,15 @@ export default async function handler(
         if (sessionRecords.records.length > 0) {
           await teable.deleteRecord('tblap3ykSwQQk276MdN', sessionRecords.records[0].id);
         }
-      } catch (e) {
-        console.warn('Failed to delete session:', e);
+      } catch (e: any) {
+        console.warn('Failed to delete session:', e?.message || e);
       }
     }
 
     // Clear cookie
-    response.setHeader('Content-Type', 'application/json');
-    response.setHeader('Set-Cookie', 'session_id=; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=0');
-    response.status(200).json({ authenticated: false });
-  } catch (error) {
-    console.error('Logout error:', error);
-    response.setHeader('Content-Type', 'application/json');
-    response.status(200).json({ authenticated: false });
+    return jsonResponse(200, { authenticated: false });
+  } catch (error: any) {
+    console.error('Logout error:', error?.message || error);
+    return jsonResponse(200, { authenticated: false });
   }
 }
