@@ -28,7 +28,13 @@ export default async function handler(
     const sessionId = sessionMatch?.[1];
 
     if (sessionId) {
-      const teable = getTeableClient();
+      let teable;
+      try {
+        teable = getTeableClient();
+      } catch (e: any) {
+        console.error('Teable client init failed:', e?.message || e);
+        return jsonResponse(response, 500, { ok: false, code: 'TEABLE_CONFIG_ERROR', error: e?.message || 'Teable configuration error' });
+      }
 
       // Delete session server-side
       try {

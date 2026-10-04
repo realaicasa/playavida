@@ -46,12 +46,11 @@ function jsonResponse(res: { setHeader: (name: string, value: string) => void; s
   res.status(status).json(body);
 }
 
-// Global error handler - ensures ALL responses are JSON
-function handleError(res: typeof response, error: any, context: string): void {
+// Top-level error handler - catches ANY error and returns JSON
+function handleError(res: { setHeader: (name: string, value: string) => void; status: (code: number) => { json: (body: object) => void }; }, error: any, context: string): void {
   console.error('Error in ' + context + ':', error?.message || error);
-  const message = error?.message || 'Unknown error';
   res.setHeader('Content-Type', 'application/json');
-  res.status(500).json({ ok: false, code: 'INTERNAL_ERROR', error: message });
+  res.status(500).json({ ok: false, code: 'INTERNAL_ERROR', error: error?.message || 'Unknown error' });
 }
 
 export default async function handler(
