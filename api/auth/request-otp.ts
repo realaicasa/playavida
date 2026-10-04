@@ -41,6 +41,11 @@ async function sendOTPEmail(email: string, code: string): Promise<void> {
   }
 }
 
+function jsonResponse(res: { setHeader: (name: string, value: string) => void; status: (code: number) => { json: (body: object) => void }; }, status: number, body: object): void {
+  res.setHeader('Content-Type', 'application/json');
+  res.status(status).json(body);
+}
+
 export default async function handler(
   request: Request,
   response: {
@@ -71,7 +76,15 @@ export default async function handler(
       return jsonResponse(response, 400, { ok: false, code: 'INVALID_EMAIL' });
     }
 
-    const teable = getTeableClient();
+    // Initialize Teable client inside try block to catch config errors
+    let teable;
+    try {
+      teable = getTeableClient();
+    } catch (e: any) {
+      console.error('Teable client init failed:', e?.message || e);
+      return jsonResponse(response, 500, { ok: false, code: 'TEABLE_CONFIG_ERROR', error: e?.message || 'Teable configuration error' });
+    }
+
     const emailHash = getEmailHash(email);
     const now = new Date();
     const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);

@@ -5,6 +5,11 @@ function getEmailHash(email: string): string {
   return crypto.createHash('sha256').update(email.toLowerCase().trim()).digest('hex');
 }
 
+function jsonResponse(res: { setHeader: (name: string, value: string) => void; status: (code: number) => { json: (body: object) => void }; }, status: number, body: object): void {
+  res.setHeader('Content-Type', 'application/json');
+  res.status(status).json(body);
+}
+
 export default async function handler(
   request: Request,
   response: {
@@ -40,7 +45,14 @@ export default async function handler(
       return jsonResponse(response, 400, { ok: false, code: 'INVALID_CODE' });
     }
 
-    const teable = getTeableClient();
+    let teable;
+    try {
+      teable = getTeableClient();
+    } catch (e: any) {
+      console.error('Teable client init failed:', e?.message || e);
+      return jsonResponse(response, 500, { ok: false, code: 'TEABLE_CONFIG_ERROR', error: e?.message || 'Teable configuration error' });
+    }
+
     const emailHash = getEmailHash(email);
 
     // Find valid OTP

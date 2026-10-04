@@ -1,5 +1,10 @@
 import { getTeableClient } from '../lib/teable';
 
+function jsonResponse(res: { setHeader: (name: string, value: string) => void; status: (code: number) => { json: (body: object) => void }; }, status: number, body: object): void {
+  res.setHeader('Content-Type', 'application/json');
+  res.status(status).json(body);
+}
+
 export default async function handler(
   request: Request,
   response: {

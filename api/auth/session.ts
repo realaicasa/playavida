@@ -1,5 +1,10 @@
 import { getTeableClient } from '../lib/teable';
 
+function jsonResponse(res: { setHeader: (name: string, value: string) => void; status: (code: number) => { json: (body: object) => void }; }, status: number, body: object): void {
+  res.setHeader('Content-Type', 'application/json');
+  res.status(status).json(body);
+}
+
 export default async function handler(
   request: Request,
   response: {
@@ -26,7 +31,13 @@ export default async function handler(
       return jsonResponse(response, 200, { authenticated: false });
     }
 
-    const teable = getTeableClient();
+    let teable;
+    try {
+      teable = getTeableClient();
+    } catch (e: any) {
+      console.error('Teable client init failed:', e?.message || e);
+      return jsonResponse(response, 500, { ok: false, code: 'TEABLE_CONFIG_ERROR', error: e?.message || 'Teable configuration error' });
+    }
 
     // Validate session
     let sessionRecord;
@@ -64,7 +75,7 @@ export default async function handler(
     // Get user public reference
     let publicReference = '';
     try {
-      const userRecords = await teable.listRecords('tblB6Wiwy4KOx3Tjgui', {
+      const userRecords = await getTeableClient().listRecords('tblB6Wiwy4KOx3Tjgui', {
         filter: 'id = "' + sessionFields.user_id + '"',
         maxRecords: 1,
       });
