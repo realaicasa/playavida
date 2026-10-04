@@ -7,13 +7,13 @@ export default async function handler(
     status: (code: number) => { json: (body: object) => void };
   }
 ): Promise<void> {
-  const jsonResponse = (status: number, body: object) => {
-    response.setHeader('Content-Type', 'application/json');
-    response.status(status).json(body);
+  const jsonResponse = (res: typeof response, status: number, body: object) => {
+    res.setHeader('Content-Type', 'application/json');
+    res.status(status).json(body);
   };
 
   if (request.method !== 'GET') {
-    return jsonResponse(405, { ok: false, code: 'METHOD_NOT_ALLOWED' });
+    return jsonResponse(response, 405, { ok: false, code: 'METHOD_NOT_ALLOWED' });
   }
 
   try {
@@ -23,7 +23,7 @@ export default async function handler(
     const sessionId = sessionMatch?.[1];
 
     if (!sessionId) {
-      return jsonResponse(200, { authenticated: false });
+      return jsonResponse(response, 200, { authenticated: false });
     }
 
     const teable = getTeableClient();
@@ -32,18 +32,18 @@ export default async function handler(
     let sessionRecord;
     try {
       const sessionRecords = await teable.listRecords('tblap3ykSwQQk276MdN', {
-        filter: `session_token_hash = "${sessionId}" AND expires_at >= "${new Date().toISOString()}"`,
+        filter: 'session_token_hash = "' + sessionId + '" AND expires_at >= "' + new Date().toISOString() + '"',
         maxRecords: 1,
       });
 
       if (sessionRecords.records.length === 0) {
-        return jsonResponse(200, { authenticated: false });
+        return jsonResponse(response, 200, { authenticated: false });
       }
 
       sessionRecord = sessionRecords.records[0];
     } catch (e: any) {
       console.error('Session validation error:', e?.message || e);
-      return jsonResponse(200, { authenticated: false });
+      return jsonResponse(response, 200, { authenticated: false });
     }
 
     const sessionFields = sessionRecord.fields as any;
@@ -65,7 +65,7 @@ export default async function handler(
     let publicReference = '';
     try {
       const userRecords = await teable.listRecords('tblB6Wiwy4KOx3Tjgui', {
-        filter: `id = "${sessionFields.user_id}"`,
+        filter: 'id = "' + sessionFields.user_id + '"',
         maxRecords: 1,
       });
       if (userRecords.records.length > 0) {
@@ -75,7 +75,7 @@ export default async function handler(
       console.warn('Failed to fetch user public reference:', e);
     }
 
-    return jsonResponse(200, {
+    return jsonResponse(response, 200, {
       authenticated: true,
       userId: sessionFields.user_id,
       public_reference: publicReference,
@@ -86,11 +86,6 @@ export default async function handler(
     });
   } catch (error: any) {
     console.error('Session validation error:', error?.message || error);
-    return jsonResponse(200, { authenticated: false });
+    return jsonResponse(response, 200, { authenticated: false });
   }
-}
-
-function jsonResponse(status: number, body: object) {
-  // This is a placeholder - the actual response handling is inline above
-  return;
 }

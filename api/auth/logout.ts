@@ -7,13 +7,13 @@ export default async function handler(
     status: (code: number) => { json: (body: object) => void };
   }
 ): Promise<void> {
-  const jsonResponse = (status: number, body: object) => {
-    response.setHeader('Content-Type', 'application/json');
-    response.status(status).json(body);
+  const jsonResponse = (res: typeof response, status: number, body: object) => {
+    res.setHeader('Content-Type', 'application/json');
+    res.status(status).json(body);
   };
 
   if (request.method !== 'POST') {
-    return jsonResponse(405, { ok: false, code: 'METHOD_NOT_ALLOWED' });
+    return jsonResponse(response, 405, { ok: false, code: 'METHOD_NOT_ALLOWED' });
   }
 
   try {
@@ -28,7 +28,7 @@ export default async function handler(
       // Delete session server-side
       try {
         const sessionRecords = await teable.listRecords('tblap3ykSwQQk276MdN', {
-          filter: `session_token_hash = "${sessionId}"`,
+          filter: 'session_token_hash = "' + sessionId + '"',
           maxRecords: 1,
         });
 
@@ -41,9 +41,9 @@ export default async function handler(
     }
 
     // Clear cookie
-    return jsonResponse(200, { authenticated: false });
+    return jsonResponse(response, 200, { authenticated: false });
   } catch (error: any) {
     console.error('Logout error:', error?.message || error);
-    return jsonResponse(200, { authenticated: false });
+    return jsonResponse(response, 200, { authenticated: false });
   }
 }
