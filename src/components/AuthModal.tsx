@@ -41,6 +41,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         body: JSON.stringify({ email: email.toLowerCase().trim() }),
       });
       const data = await res.json();
+      console.log('OTP request response:', res.status, data);
       if (!res.ok) {
         setError(data.error ? `${data.code}: ${data.error}` : (data.code === 'RATE_LIMITED' ? 'Demasiados intentos. Intenta más tarde.' : 'Error al enviar el código'));
         setIsLoading(false);
@@ -48,9 +49,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       }
       setOtpSentNotice(true);
       setStep('otp');
-    } catch (e) {
+    } catch (e: any) {
       console.error('OTP request failed:', e);
-      setError('Error de conexión. Intenta de nuevo.');
+      setError(`Error de conexión: ${e.message || 'Intenta de nuevo.'}`);
     } finally {
       setIsLoading(false);
     }
@@ -89,9 +90,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       };
       onAuthSuccess(user);
       onClose();
-    } catch (e) {
+    } catch (e: any) {
       console.error('OTP verification failed:', e);
-      setError('Error de conexión. Intenta de nuevo.');
+      setError(`Error de conexión: ${e.message || 'Intenta de nuevo.'}`);
     } finally {
       setIsLoading(false);
     }
