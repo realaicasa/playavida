@@ -5,11 +5,6 @@ function getEmailHash(email: string): string {
   return crypto.createHash('sha256').update(email.toLowerCase().trim()).digest('hex');
 }
 
-function jsonResponse(res: { setHeader: (name: string, value: string) => void; status: (code: number) => { json: (body: object) => void }; }, status: number, body: object): void {
-  res.setHeader('Content-Type', 'application/json');
-  res.status(status).json(body);
-}
-
 export default async function handler(
   request: Request,
   response: {
@@ -17,13 +12,13 @@ export default async function handler(
     status: (code: number) => { json: (body: object) => void };
   }
 ): Promise<void> {
-  const jsonResponse = (res: typeof response, status: number, body: object) => {
-    res.setHeader('Content-Type', 'application/json');
-    res.status(status).json(body);
+  const jsonResponse = (status: number, body: object) => {
+    response.setHeader('Content-Type', 'application/json');
+    response.status(status).json(body);
   };
 
   if (request.method !== 'POST') {
-    return jsonResponse(response, 405, { ok: false, code: 'METHOD_NOT_ALLOWED' });
+    return jsonResponse(405, { ok: false, code: 'METHOD_NOT_ALLOWED' });
   }
 
   try {
@@ -31,18 +26,18 @@ export default async function handler(
     try {
       body = await request.json();
     } catch {
-      return jsonResponse(response, 400, { ok: false, code: 'INVALID_JSON' });
+      return jsonResponse(400, { ok: false, code: 'INVALID_JSON' });
     }
 
     const email = body.email?.toLowerCase().trim();
     const code = body.code?.trim();
 
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      return jsonResponse(response, 400, { ok: false, code: 'INVALID_EMAIL' });
+      return jsonResponse(400, { ok: false, code: 'INVALID_EMAIL' });
     }
 
     if (!code || !/^\d{6}$/.test(code)) {
-      return jsonResponse(response, 400, { ok: false, code: 'INVALID_CODE' });
+      return jsonResponse(400, { ok: false, code: 'INVALID_CODE' });
     }
 
     let teable;
@@ -50,7 +45,7 @@ export default async function handler(
       teable = getTeableClient();
     } catch (e: any) {
       console.error('Teable client init failed:', e?.message || e);
-      return jsonResponse(response, 500, { ok: false, code: 'TEABLE_CONFIG_ERROR', error: e?.message || 'Teable configuration error' });
+      return jsonResponse(500, { ok: false, code: 'TEABLE_CONFIG_ERROR', error: e?.message || 'Teable configuration error' });
     }
 
     const emailHash = getEmailHash(email);
@@ -65,26 +60,26 @@ export default async function handler(
       });
 
       if (otpRecords.records.length === 0) {
-        return jsonResponse(response, 400, { ok: false, code: 'INVALID_CODE' });
+        return jsonResponse(400, { ok: false, code: 'INVALID_CODE' });
       }
 
       otpRecord = otpRecords.records[0];
     } catch (e: any) {
       console.error('Failed to fetch OTP:', e?.message || e);
-      return jsonResponse(response, 500, { ok: false, code: 'OTP_FETCH_FAILED', error: e?.message || 'Unknown error' });
+      return jsonResponse(500, { ok: false, code: 'OTP_FETCH_FAILED', error: e?.message || 'Unknown error' });
     }
 
     const otpFields = otpRecord.fields as any;
 
     // Check attempts
     if ((otpFields.attempt_count || 0) >= 5) {
-      return jsonResponse(response, 429, { ok: false, code: 'RATE_LIMITED' });
+      return jsonResponse(429, { ok: false, code: 'RATE_LIMITED' });
     }
 
     // Verify OTP
     const storedHash = otpRecord.fields.code_hash as string;
     if (!storedHash) {
-      return jsonResponse(response, 400, { ok: false, code: 'INVALID_CODE' });
+      return jsonResponse(400, { ok: false, code: 'INVALID_CODE' });
     }
 
     const [salt, hash] = storedHash.split(':');
@@ -96,7 +91,7 @@ export default async function handler(
         attempt_count: (otpFields.attempt_count || 0) + 1,
       });
 
-      return jsonResponse(response, 400, { ok: false, code: 'INVALID_CODE' });
+      return jsonResponse(400, { ok: false, code: 'INVALID_CODE' });
     }
 
     // Mark OTP as consumed
@@ -126,7 +121,7 @@ export default async function handler(
       }
     } catch (e: any) {
       console.error('Failed to find/create user:', e?.message || e);
-      return jsonResponse(response, 500, { ok: false, code: 'USER_CREATE_FAILED', error: e?.message || 'Unknown error' });
+      return jsonResponse(500, { ok: false, code: 'USER_CREATE_FAILED', error: e?.message || 'Unknown error' });
     }
 
     const userId = userRecord.id;
@@ -181,7 +176,7 @@ export default async function handler(
       });
     } catch (e: any) {
       console.error('Failed to create session:', e?.message || e);
-      return jsonResponse(response, 500, { ok: false, code: 'SESSION_CREATE_FAILED', error: e?.message || 'Unknown error' });
+      return jsonResponse(500, { ok: false, code: 'SESSION_CREATE_FAILED', error: e?.message || 'Unknown error' });
     }
 
     // Get user public reference
@@ -199,7 +194,7 @@ export default async function handler(
     }
 
     // Set session cookie
-    return jsonResponse(response, 200, {
+    return jsonResponse(200, {
       authenticated: true,
       userId,
       public_reference: publicReference,
@@ -210,10 +205,6 @@ export default async function handler(
     });
   } catch (error: any) {
     console.error('OTP verify error:', error?.message || error);
-    return jsonResponse(response, 500, { ok: false, code: 'INTERNAL_ERROR', error: error?.message || 'Unknown error' });
+    return jsonResponse(500, { ok: false, code: 'INTERNAL_ERROR', error: error?.message || 'Unknown error' });
   }
-}
-
-function getEmailHash(email: string): string {
-  return crypto.createHash('sha256').update(email.toLowerCase().trim()).digest('hex');
 }
