@@ -1,4 +1,4 @@
-import { getTeableClient } from '../lib/teable';
+import { getTeableClient } from '../lib/teable.js';
 import crypto from 'crypto';
 
 function getEmailHash(email: string): string {

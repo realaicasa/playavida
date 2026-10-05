@@ -1,4 +1,4 @@
-import { getTeableClient } from '../lib/teable';
+import { getTeableClient } from '../lib/teable.js';
 
 function jsonResponse(res: { setHeader: (name: string, value: string) => void; status: (code: number) => { json: (body: object) => void }; }, status: number, body: object): void {
   res.setHeader('Content-Type', 'application/json');
