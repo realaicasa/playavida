@@ -1,4 +1,4 @@
-﻿# DEPLOYMENT.md ÈÃ÷ PlayaVida Deployment Guide
+﻿# DEPLOYMENT.md — PlayaVida Deployment Guide
 
 ## Current Status (Phase 0)
 **No deployment configured.** Phase 0 is local development only.
@@ -82,28 +82,28 @@ dist/
 *.key
 ```
 
-## Health Check (REBUILD-002 ÈÃ÷ completed locally)
+## Health Check (REBUILD-002 — completed locally)
 - **Endpoint**: `GET /api/health`
 - **Response**: `{ "ok": true }`
 - **Non-GET**: 405 `{ "ok": false, "code": "METHOD_NOT_ALLOWED" }`
 - **No auth, no DB, no external deps, no env vars**
-- **Vercel Preview deployment verification pending** ÈÃ÷ do not claim endpoint is live until explicitly confirmed
+- **Vercel Preview deployment verification pending** — do not claim endpoint is live until explicitly confirmed
 
-## Session Check (REBUILD-004 ÈÃ÷ completed locally)
+## Session Check (REBUILD-004 — completed locally)
 - **Endpoint**: `GET /api/auth/session`
 - **Response**: `{ "authenticated": false }`
 - **Non-GET**: 405 `{ "ok": false, "code": "METHOD_NOT_ALLOWED" }`
 - **No auth, no DB, no external deps, no env vars, static response**
-- **Vercel Preview deployment verification pending** ÈÃ÷ do not claim endpoint is live until explicitly confirmed
+- **Vercel Preview deployment verification pending** — do not claim endpoint is live until explicitly confirmed
 
-## Logout Endpoint (REBUILD-005 ÈÃ÷ completed locally)
+## Logout Endpoint (REBUILD-005 — completed locally)
 - **Endpoint**: `POST /api/auth/logout`
 - **Response**: `{ "authenticated": false }`
 - **Non-POST**: 405 `{ "ok": false, "code": "METHOD_NOT_ALLOWED" }`
 - **No auth, no DB, no external deps, no env vars, static response**
-- **Vercel Preview deployment verification pending** ÈÃ÷ do not claim endpoint is live until explicitly confirmed
+- **Vercel Preview deployment verification pending** — do not claim endpoint is live until explicitly confirmed
 
-## Identity & Authorization Design Inventory (REBUILD-006 ÈÃ÷ completed locally)
+## Identity & Authorization Design Inventory (REBUILD-006 — completed locally)
 
 ### Current Mock Implementation
 - **Auth layer**: None — `GET /api/auth/session` returns `{ authenticated: false }`
@@ -169,3 +169,116 @@ A formal design decision record for the first real authentication implementation
 ## Rollback
 - Vercel instant rollback via dashboard
 - Database migrations: forward-only (Teable schema changes)
+
+## Future Deployment Phases
+
+### Phase 1 — Core Auth & Server Foundation (REBUILD-008 to REBUILD-014)
+
+#### REBUILD-008 — Provider Configuration & Secrets
+- Configure Vercel environment variables: `RESEND_API_KEY`, `SESSION_SECRET`, `OTP_SECRET`
+- Create Teable `sessions` table with proper indexes
+- Verify secret provisioning (no committed secrets)
+
+#### REBUILD-009 — OTP Request & Verification Endpoints
+- Deploy `POST /api/auth/request-otp` and `POST /api/auth/verify-otp`
+- Verify Resend email delivery in preview deployment
+- Confirm rate limits: 5 req/hour per email, 20 req/hour per IP
+
+#### REBUILD-010 — Server Session Endpoint
+- Deploy `GET /api/auth/session` with real cookie validation
+- Verify secure cookie attributes in production HTTPS
+- Test session validation middleware (expiry, revocation, rotation)
+
+#### REBUILD-011 — Logout Endpoint
+- Deploy `POST /api/auth/logout` with server-side session revocation
+- Verify cookie clearing in browser
+
+#### REBUILD-012 — Server-Side Authorization Middleware
+- Deploy `requireAuth`, `requireRole`, `requireOwnership`, `requireStaff` middleware
+- Verify 403 responses for unauthorized access in preview
+
+#### REBUILD-013 — Migration from Mock Identity
+- Remove `DEMO_USERS[0]` auto-login from production build
+- Verify real session from `/api/auth/session` replaces mock `currentUser`
+- Confirm `STF-TEST-A` test guard preserved in test fixtures only
+
+#### REBUILD-014 — Read-Only Superadmin Access
+- Deploy `GET /api/superadmin/overview` behind `platform_superadmin` role
+- Verify audit log on access; no mutations possible
+
+---
+
+### Phase 2 — Core Domain Features (REBUILD-015 to REBUILD-021)
+
+#### REBUILD-015 — Reports & Moderation Read-Only
+- Deploy `GET /api/superadmin/reports` and `POST /api/superadmin/reports/:id/resolve`
+- Verify resolution audit log in Teable
+
+#### REBUILD-016 — Business/Subscription Oversight
+- Deploy `GET /api/superadmin/businesses` and `GET /api/superadmin/businesses/:id`
+- Verify contact access = audit-logged override
+
+#### REBUILD-017 — Loyalty/Stamp Operational Oversight
+- Deploy `GET /api/superadmin/loyalty/overview` and `GET /api/superadmin/loyalty/ledger`
+- Verify read-only; staff PIN validation stays server-side
+
+#### REBUILD-018 — Notifications/Campaign Governance
+- Deploy `GET /api/superadmin/campaigns` and `POST /api/superadmin/campaigns/:id/approve`
+- Verify approval audit log; no auto-send without approval
+
+#### REBUILD-019 — Privacy/Consent/Data-Governance Oversight
+- Deploy `GET /api/superadmin/consent` and `GET /api/superadmin/export-requests`
+- Verify purpose-limited access, minimization, auditability
+
+#### REBUILD-020 — Audit/Activity Visibility
+- Deploy platform-wide activity log endpoint
+- Verify immutable audit log (Teable `admin_audit_log`)
+
+#### REBUILD-021 — Platform Configuration & Controlled Feature Rollout
+- Deploy feature flag management endpoints
+- Verify controlled feature rollout governance
+
+---
+
+### Phase 3 — Group Conversations & Threaded Chat (REBUILD-022 to REBUILD-029)
+
+#### REBUILD-022 — Group Membership & Persisted Conversations
+- Deploy group membership and conversation persistence APIs
+- Verify pagination, unread state
+
+#### REBUILD-023 — Threaded Replies & Unread State
+- Deploy `parent_message_id` threading and unread counts
+- Verify read receipts, typing indicators
+
+#### REBUILD-024 — Moderation & Safety
+- Deploy message reporting, moderation queue
+- Verify rate limiting, abuse controls, content deletion
+
+#### REBUILD-025 — Near-Real-Time Updates
+- Deploy Server-sent events or WebSocket for message delivery
+- Verify typing indicators, presence
+
+#### REBUILD-026 — Push Notifications
+- Deploy VAPID/Web Push integration
+- Verify mute controls, notification preferences
+
+#### REBUILD-027 — Advanced Chat Features (Future)
+- Attachments, reactions, voice notes (post-approval only)
+
+#### REBUILD-028 — End-to-End Encryption (Future)
+- Separate high-complexity security project
+
+---
+
+### Phase 4 — Advanced Platform Capabilities (REBUILD-030+)
+
+- REBUILD-030 — Platform Configuration & Controlled Feature Rollout
+- REBUILD-031 — Analytics/Event Pipeline
+- REBUILD-032 — Multi-region / Edge Deployment
+- REBUILD-033 — Data Export / Compliance Tooling
+
+---
+
+### Current Deployment Status
+**Phase 0 Complete** — All Phase 0 tickets done locally (REBUILD-002 through REBUILD-007)
+**Phase 1 Pending** — Requires Vercel Node.js 22.x configuration and preview deployment verification
