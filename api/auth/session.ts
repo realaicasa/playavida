@@ -1,34 +1,23 @@
 import { getTeableClient } from '../lib/teable.js';
-
-function jsonResponse(res: { setHeader: (name: string, value: string) => void; status: (code: number) => { json: (body: object) => void }; }, status: number, body: object): void {
-  res.setHeader('Content-Type', 'application/json');
-  res.status(status).json(body);
-}
+import type { IncomingMessage, ServerResponse } from 'http';
+import { getCookieHeader, jsonResponse } from '../lib/node-helpers.js';
 
 export default async function handler(
-  request: Request,
-  response: {
-    setHeader: (name: string, value: string) => void;
-    status: (code: number) => { json: (body: object) => void };
-  }
+  req: IncomingMessage,
+  res: ServerResponse
 ): Promise<void> {
-  const jsonResponse = (res: typeof response, status: number, body: object) => {
-    res.setHeader('Content-Type', 'application/json');
-    res.status(status).json(body);
-  };
-
-  if (request.method !== 'GET') {
-    return jsonResponse(response, 405, { ok: false, code: 'METHOD_NOT_ALLOWED' });
+  if (req.method !== 'GET') {
+    return jsonResponse(res, 405, { ok: false, code: 'METHOD_NOT_ALLOWED' });
   }
 
   try {
     // Get session cookie
-    const cookieHeader = request.headers.get('cookie') || '';
+    const cookieHeader = getCookieHeader(req);
     const sessionMatch = cookieHeader.match(/session_id=([^;]+)/);
     const sessionId = sessionMatch?.[1];
 
     if (!sessionId) {
-      return jsonResponse(response, 200, { authenticated: false });
+      return jsonResponse(res, 200, { authenticated: false });
     }
 
     let teable;
@@ -36,7 +25,7 @@ export default async function handler(
       teable = getTeableClient();
     } catch (e: any) {
       console.error('Teable client init failed:', e?.message || e);
-      return jsonResponse(response, 500, { ok: false, code: 'TEABLE_CONFIG_ERROR', error: e?.message || 'Teable configuration error' });
+      return jsonResponse(res, 500, { ok: false, code: 'TEABLE_CONFIG_ERROR', error: e?.message || 'Teable configuration error' });
     }
 
     // Validate session
@@ -48,13 +37,13 @@ export default async function handler(
       });
 
       if (sessionRecords.records.length === 0) {
-        return jsonResponse(response, 200, { authenticated: false });
+        return jsonResponse(res, 200, { authenticated: false });
       }
 
       sessionRecord = sessionRecords.records[0];
     } catch (e: any) {
       console.error('Session validation error:', e?.message || e);
-      return jsonResponse(response, 200, { authenticated: false });
+      return jsonResponse(res, 200, { authenticated: false });
     }
 
     const sessionFields = sessionRecord.fields as any;
@@ -86,7 +75,7 @@ export default async function handler(
       console.warn('Failed to fetch user public reference:', e);
     }
 
-    return jsonResponse(response, 200, {
+    return jsonResponse(res, 200, {
       authenticated: true,
       userId: sessionFields.user_id,
       public_reference: publicReference,
@@ -97,6 +86,6 @@ export default async function handler(
     });
   } catch (error: any) {
     console.error('Session validation error:', error?.message || error);
-    return jsonResponse(response, 200, { authenticated: false });
+    return jsonResponse(res, 200, { authenticated: false });
   }
 }
