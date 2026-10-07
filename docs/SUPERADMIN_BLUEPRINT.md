@@ -156,13 +156,74 @@ This document defines the implementation blueprint for the **PlayaVida Platform 
 
 ---
 
-## 7. Test-Account Guard
+## 8. Future Implementation Phases (Aligned with REBUILD Tickets)
 
-- **`STF-TEST-A`** (staff reference `STF-TEST-A`, pin `1234`) exists only in `src/lib/constants.ts` → `INITIAL_STAFF_ACCOUNTS`.
-- Used **only** by `src/tests/security.test.ts` for loyalty stamp PIN validation tests.
-- **No production source path** imports, exposes, or references this test account.
-- **Safe** — internal to test fixtures only. No Superadmin endpoint or component will expose it.
+### Phase 1 — Core Auth & Server Foundation (REBUILD-008 to REBUILD-014)
+**Prerequisite for all Superadmin features** — No Superadmin UI or endpoints exist until identity/session layer is real and server-enforced.
+
+| REBUILD | Superadmin-Relevant Deliverable |
+|---------|---------------------------------|
+| REBUILD-008 | Provider secrets provisioned (Resend, session, OTP); Teable `sessions` table created |
+| REBUILD-009 | OTP endpoints deployed; rate limits enforced |
+| REBUILD-010 | `GET /api/auth/session` returns real user + roles from secure cookie |
+| REBUILD-011 | Server-side session revocation on logout |
+| REBUILD-012 | `requireRole('platform_superadmin')` middleware deployed and tested |
+| REBUILD-013 | Mock identity removed; real session replaces `currentUser` in client |
+| REBUILD-014 | **First Superadmin endpoint**: `GET /api/superadmin/overview` (read-only, audit-logged) |
+
+**Gate**: Phase 1 complete = `requireRole('platform_superadmin')` returns 403 for all non-Superadmin roles in automated tests.
 
 ---
 
-*End of SUPERADMIN_BLUEPRINT.md*
+### Phase 2 — Core Domain Features (REBUILD-015 to REBUILD-021)
+**Read-only Superadmin operational oversight** — Each module adds one read-only endpoint + one controlled mutation endpoint.
+
+| REBUILD | Superadmin Module | Endpoint(s) | Privacy/Security |
+|---------|-------------------|-------------|------------------|
+| REBUILD-015 | Reports & Moderation | `GET /api/superadmin/reports`, `POST /api/superadmin/reports/:id/resolve` | Resolution audit-logged; no bulk actions; no automated moderation |
+| REBUILD-016 | Business/Subscription Oversight | `GET /api/superadmin/businesses`, `GET /api/superadmin/businesses/:id` | Contact access = audit-logged override; read-only |
+| REBUILD-017 | Loyalty/Stamp Oversight | `GET /api/superadmin/loyalty/overview`, `GET /api/superadmin/loyalty/ledger` | Staff PIN validation stays server-side; no stamp overrides |
+| REBUILD-018 | Notifications/Campaign Governance | `GET /api/superadmin/campaigns`, `POST /api/superadmin/campaigns/:id/approve` | Approval audit-logged; no auto-send without approval |
+| REBUILD-019 | Privacy/Consent/Data-Governance | `GET /api/superadmin/consent`, `GET /api/superadmin/export-requests` | Purpose-limited access; minimization; auditability |
+| REBUILD-020 | Audit/Activity Visibility | `GET /api/superadmin/audit-log` | Immutable audit log (Teable `admin_audit_log`) |
+| REBUILD-021 | Platform Configuration & Feature Rollout | `GET/POST /api/superadmin/config`, `POST /api/superadmin/flags` | Controlled rollout governance; no global killswitch without approval |
+
+**Gate**: Phase 2 complete = all 7 modules deployed, negative-access tests pass for each endpoint.
+
+---
+
+### Phase 3 — Group Conversations & Threaded Chat Oversight (REBUILD-022 to REBUILD-029)
+**Superadmin visibility into communication layer** — Read-only oversight of group messaging platform.
+
+| REBUILD | Superadmin-Relevant Deliverable |
+|---------|---------------------------------|
+| REBUILD-022 | Group membership and conversation metadata visibility |
+| REBUILD-023 | Threaded reply structure and unread state monitoring |
+| REBUILD-024 | Message reporting queue and moderation action audit |
+| REBUILD-025 | Near-real-time delivery metrics and presence oversight |
+| REBUILD-026 | Push notification delivery stats and mute compliance |
+| REBUILD-027 | Advanced features (attachments, reactions) — read-only audit |
+| REBUILD-028 | E2E encryption status monitoring (if implemented) |
+
+**Gate**: Phase 3 complete = Superadmin can view communication health metrics without accessing message content.
+
+---
+
+### Phase 4 — Advanced Platform Capabilities (REBUILD-030+)
+**Platform governance maturity** — Configuration, analytics, compliance, multi-region.
+
+| REBUILD | Superadmin-Relevant Deliverable |
+|---------|---------------------------------|
+| REBUILD-030 | Feature flag granular controls (per-business, per-region, per-role) |
+| REBUILD-031 | Analytics/event pipeline oversight (data flow, privacy compliance) |
+| REBUILD-032 | Multi-region deployment oversight and failover controls |
+| REBUILD-033 | Data export/compliance tooling (GDPR, LGPD, audit exports) |
+
+**Gate**: Phase 4 complete = Superadmin has full platform governance visibility without raw data access.
+
+---
+
+### Current Phase Status
+**Phase 0 Complete** — Blueprint defined; no Superadmin code exists
+**Phase 1 Pending** — Requires Vercel deployment verification and Node.js 22.x config
+**All Superadmin features gated behind Phase 1 completion** — no UI, no routes, no endpoints until `requireRole('platform_superadmin')` is live and tested
