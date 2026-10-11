@@ -2,10 +2,5 @@
   "buildCommand": "bun run build",
   "outputDirectory": "dist",
   "framework": "vite",
-  "installCommand": "bun install --frozen-lockfile",
-  "functions": {
-    "api/**/*.ts": {
-      "runtime": "nodejs20.x"
-    }
-  }
+  "installCommand": "bun install --frozen-lockfile"
 }
