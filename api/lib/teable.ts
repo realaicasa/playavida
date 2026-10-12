@@ -17,9 +17,12 @@ interface TeableListResponse {
 }
 
 interface TeableCreateResponse {
-  id: string;
-  fields: Record<string, unknown>;
-  createdTime: string;
+  records: Array<{
+    id: string;
+    fields: Record<string, unknown>;
+    createdTime: string;
+    lastModifiedTime: string;
+  }>;
 }
 
 class TeableClient {
@@ -69,10 +72,10 @@ class TeableClient {
   }
 
   async createRecord(tableId: string, fields: Record<string, unknown>): Promise<TeableCreateResponse> {
-    const endpoint = `/tables/${tableId}/records`;
+    const endpoint = `/table/${tableId}/record`;
     return this.request<TeableCreateResponse>(endpoint, {
       method: 'POST',
-      body: JSON.stringify({ fields }),
+      body: JSON.stringify({ records: [{ fields }] }),
     });
   }
 

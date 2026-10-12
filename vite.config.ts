@@ -3,12 +3,14 @@ import react from '@vitejs/plugin-react';
 import path from 'path';
 import {defineConfig} from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
+import nitro from '@nitrojs/vite';
 
 export default defineConfig(() => {
   return {
     plugins: [
         react(), 
         tailwindcss(),
+        nitro(),
         VitePWA({
           registerType: 'autoUpdate',
           includeAssets: ['PlayaVida128.svg', 'PlayaVida192.svg', 'PlayaVida512.svg'],

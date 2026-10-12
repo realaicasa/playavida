@@ -115,7 +115,7 @@ export default async function handler(
         role: 'member',
         created_at: new Date().toISOString(),
       });
-      userRecord = newUser;
+      userRecord = newUser.records[0];
     } else {
       userRecord = userRecords.records[0];
     }
