@@ -1,4 +1,9 @@
-import { getTeableClient } from './teable';
+import { getTeableClient, Filter } from './teable';
+
+const SESSIONS_TABLE_ID = process.env.TEABLE_SESSIONS_TABLE_ID;
+if (!SESSIONS_TABLE_ID) {
+  throw new Error('TEABLE_SESSIONS_TABLE_ID environment variable is required');
+}
 
 export interface AuthContext {
   authenticated: boolean;
@@ -16,8 +21,8 @@ export async function validateSession(sessionId: string): Promise<{ valid: boole
 
   try {
     const teable = getTeableClient();
-    const sessionRecords = await teable.listRecords('tblap3ykSwQQk276MdN', {
-      filter: `session_token_hash = "${sessionId}" AND expires_at >= "${new Date().toISOString()}"`,
+    const sessionRecords = await teable.listRecords(SESSIONS_TABLE_ID, {
+      filter: { fieldId: 'session_token_hash', operator: 'is', value: sessionId },
       maxRecords: 1,
     });
 
@@ -30,7 +35,7 @@ export async function validateSession(sessionId: string): Promise<{ valid: boole
 
     // Update last accessed
     try {
-      await teable.updateRecord('tblap3ykSwQQk276MdN', sessionRecord.id, {
+      await teable.updateRecord(SESSIONS_TABLE_ID, sessionRecord.id as string, {
         last_seen_at: new Date().toISOString(),
       });
     } catch (e) {
@@ -45,11 +50,11 @@ export async function validateSession(sessionId: string): Promise<{ valid: boole
       valid: true,
       context: {
         authenticated: true,
-        userId: sessionFields.user_id,
+        userId: sessionFields.user_id as string,
         roles,
         businessOwnerships,
         staffAssignments,
-        exp: Math.floor(new Date(sessionFields.expires_at).getTime() / 1000),
+        exp: Math.floor(new Date(sessionFields.expires_at as string).getTime() / 1000),
       },
     };
   } catch (error) {

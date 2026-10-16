@@ -1,7 +1,12 @@
-import { getTeableClient } from '../lib/teable.js';
+import { getTeableClient, Filter } from '../../../lib/teable.js';
 import crypto from 'crypto';
 import type { IncomingMessage, ServerResponse } from 'http';
-import { parseJsonBody, jsonResponse, ParsedBody } from '../lib/node-helpers.js';
+import { parseJsonBody, jsonResponse, ParsedBody } from '../../../lib/node-helpers.js';
+
+const OTP_TABLE_ID = process.env.TEABLE_OTP_TABLE_ID;
+if (!OTP_TABLE_ID) {
+  throw new Error('TEABLE_OTP_TABLE_ID environment variable is required');
+}
 
 function generateOTP(): string {
   return Math.floor(100000 + Math.random() * 900000).toString();
@@ -82,9 +87,9 @@ export default async function handler(
   const now = new Date();
   const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
 
-  try {
-    const recentOTPs = await teable.listRecords('tblVe1AhQ3zLW3eijnw', {
-      filter: 'email_hash = "' + emailHash + '" AND created_at >= "' + oneHourAgo.toISOString() + '"',
+try {
+    const recentOTPs = await teable.listRecords(OTP_TABLE_ID, {
+      filter: { fieldId: 'email_hash', operator: 'is', value: emailHash },
       maxRecords: 10,
     });
 
@@ -102,7 +107,7 @@ export default async function handler(
   const expiresAt = new Date(now.getTime() + 10 * 60 * 1000);
 
   try {
-    await teable.createRecord('tblVe1AhQ3zLW3eijnw', {
+    await teable.createRecord(OTP_TABLE_ID, {
       email_hash: getEmailHash(email),
       code_hash: codeHash,
       expires_at: expiresAt.toISOString(),

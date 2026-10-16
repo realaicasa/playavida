@@ -1,6 +1,12 @@
-import { getTeableClient } from '../lib/teable.js';
+import { getTeableClient, Filter } from '../../../lib/teable.js';
 import type { IncomingMessage, ServerResponse } from 'http';
-import { getCookieHeader, jsonResponse } from '../lib/node-helpers.js';
+import { getCookieHeader, jsonResponse } from '../../../lib/node-helpers.js';
+
+const SESSIONS_TABLE_ID = process.env.TEABLE_SESSIONS_TABLE_ID;
+if (!SESSIONS_TABLE_ID) {
+  throw new Error('TEABLE_SESSIONS_TABLE_ID environment variable is required');
+}
+const USERS_TABLE_ID = process.env.TEABLE_TABLE_USERS || 'tblB6Wiwy4KOx3Tjgui';
 
 export default async function handler(
   req: IncomingMessage,
@@ -31,8 +37,8 @@ export default async function handler(
     // Validate session
     let sessionRecord;
     try {
-      const sessionRecords = await teable.listRecords('tblap3ykSwQQk276MdN', {
-        filter: 'session_token_hash = "' + sessionId + '" AND expires_at >= "' + new Date().toISOString() + '"',
+      const sessionRecords = await teable.listRecords(SESSIONS_TABLE_ID, {
+        filter: { fieldId: 'session_token_hash', operator: 'is', value: sessionId as string },
         maxRecords: 1,
       });
 
@@ -50,7 +56,7 @@ export default async function handler(
 
     // Update last seen
     try {
-      await teable.updateRecord('tblap3ykSwQQk276MdN', sessionRecord.id, {
+      await teable.updateRecord(SESSIONS_TABLE_ID, sessionRecord.id as string, {
         last_seen_at: new Date().toISOString(),
       });
     } catch (e) {
@@ -64,8 +70,8 @@ export default async function handler(
     // Get user public reference
     let publicReference = '';
     try {
-      const userRecords = await getTeableClient().listRecords('tblB6Wiwy4KOx3Tjgui', {
-        filter: 'id = "' + sessionFields.user_id + '"',
+      const userRecords = await getTeableClient().listRecords(USERS_TABLE_ID, {
+        filter: { fieldId: 'id', operator: 'is', value: sessionFields.user_id as string },
         maxRecords: 1,
       });
       if (userRecords.records.length > 0) {
@@ -77,12 +83,12 @@ export default async function handler(
 
     return jsonResponse(res, 200, {
       authenticated: true,
-      userId: sessionFields.user_id,
+      userId: sessionFields.user_id as string,
       public_reference: publicReference,
       roles,
       businessOwnerships,
       staffAssignments,
-      exp: Math.floor(new Date(sessionFields.expires_at).getTime() / 1000),
+      exp: Math.floor(new Date(sessionFields.expires_at as string).getTime() / 1000),
     });
   } catch (error: any) {
     console.error('Session validation error:', error?.message || error);

@@ -1,6 +1,11 @@
-import { getTeableClient } from '../lib/teable.js';
+import { getTeableClient, Filter } from '../../../lib/teable.js';
 import type { IncomingMessage, ServerResponse } from 'http';
-import { getCookieHeader, jsonResponse, clearSessionCookie } from '../lib/node-helpers.js';
+import { getCookieHeader, jsonResponse, clearSessionCookie } from '../../../lib/node-helpers.js';
+
+const SESSIONS_TABLE_ID = process.env.TEABLE_SESSIONS_TABLE_ID;
+if (!SESSIONS_TABLE_ID) {
+  throw new Error('TEABLE_SESSIONS_TABLE_ID environment variable is required');
+}
 
 export default async function handler(
   req: IncomingMessage,
@@ -27,13 +32,13 @@ export default async function handler(
 
       // Delete session server-side
       try {
-        const sessionRecords = await teable.listRecords('tblap3ykSwQQk276MdN', {
-          filter: 'session_token_hash = "' + sessionId + '"',
+        const sessionRecords = await teable.listRecords(SESSIONS_TABLE_ID, {
+          filter: { fieldId: 'session_token_hash', operator: 'is', value: sessionId },
           maxRecords: 1,
         });
 
         if (sessionRecords.records.length > 0) {
-          await teable.deleteRecord('tblap3ykSwQQk276MdN', sessionRecords.records[0].id);
+          await teable.deleteRecord(SESSIONS_TABLE_ID, sessionRecords.records[0].id as string);
         }
       } catch (e: any) {
         console.warn('Failed to delete session:', e?.message || e);

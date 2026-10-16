@@ -1,7 +1,19 @@
-import { getTeableClient } from '../lib/teable.js';
+import { getTeableClient, Filter } from '../../../lib/teable.js';
 import crypto from 'crypto';
 import type { IncomingMessage, ServerResponse } from 'http';
-import { parseJsonBody, jsonResponse, ParsedBody } from '../lib/node-helpers.js';
+import { parseJsonBody, jsonResponse, ParsedBody } from '../../../lib/node-helpers.js';
+
+const OTP_TABLE_ID = process.env.TEABLE_OTP_TABLE_ID;
+if (!OTP_TABLE_ID) {
+  throw new Error('TEABLE_OTP_TABLE_ID environment variable is required');
+}
+const SESSIONS_TABLE_ID = process.env.TEABLE_SESSIONS_TABLE_ID;
+if (!SESSIONS_TABLE_ID) {
+  throw new Error('TEABLE_SESSIONS_TABLE_ID environment variable is required');
+}
+const USERS_TABLE_ID = process.env.TEABLE_TABLE_USERS || 'tblB6Wiwy4KOx3Tjgui';
+const BUSINESSES_TABLE_ID = process.env.TEABLE_TABLE_BUSINESSES || 'tbl8IOboEGdwYHqJck2';
+const STAFF_TABLE_ID = 'tblFemWKDqyaQtOqDCV';
 
 function getEmailHash(email: string): string {
   return crypto.createHash('sha256').update(email.toLowerCase().trim()).digest('hex');
@@ -53,8 +65,14 @@ export default async function handler(
   // Find valid OTP
   let otpRecord;
   try {
-    const otpRecords = await teable.listRecords('tblVe1AhQ3zLW3eijnw', {
-      filter: 'email_hash = "' + emailHash + '" AND status = "issued" AND expires_at >= "' + new Date().toISOString() + '"',
+    const otpRecords = await teable.listRecords(OTP_TABLE_ID, {
+      filter: {
+        conjunction: 'AND',
+        conditions: [
+          { fieldId: 'email_hash', operator: 'is', value: emailHash },
+          { fieldId: 'status', operator: 'is', value: 'issued' },
+        ],
+      },
       maxRecords: 1,
       sort: '-created_at',
     });
@@ -87,7 +105,7 @@ export default async function handler(
 
   if (!crypto.timingSafeEqual(Buffer.from(hash), Buffer.from(verifyHash))) {
     // Increment attempts
-    await teable.updateRecord('tblVe1AhQ3zLW3eijnw', otpRecord.id, {
+    await teable.updateRecord(OTP_TABLE_ID, otpRecord.id as string, {
       attempt_count: (otpFields.attempt_count || 0) + 1,
     });
 
@@ -95,7 +113,7 @@ export default async function handler(
   }
 
   // Mark OTP as consumed
-  await teable.updateRecord('tblVe1AhQ3zLW3eijnw', otpRecord.id, {
+  await teable.updateRecord(OTP_TABLE_ID, otpRecord.id as string, {
     status: 'consumed',
     consumed_at: new Date().toISOString(),
   });
@@ -103,14 +121,14 @@ export default async function handler(
   // Find or create user
   let userRecord;
   try {
-    const userRecords = await teable.listRecords('tblB6Wiwy4KOx3Tjgui', {
-      filter: 'email = "' + email + '"',
+    const userRecords = await teable.listRecords(USERS_TABLE_ID, {
+      filter: { fieldId: 'email', operator: 'is', value: email },
       maxRecords: 1,
     });
 
     if (userRecords.records.length === 0) {
       // Create new user
-      const newUser = await teable.createRecord('tblB6Wiwy4KOx3Tjgui', {
+      const newUser = await teable.createRecord(USERS_TABLE_ID, {
         email: email,
         role: 'member',
         created_at: new Date().toISOString(),
@@ -129,11 +147,11 @@ export default async function handler(
   // Fetch user's business ownerships
   let businessOwnerships: string[] = [];
   try {
-    const bizRecords = await teable.listRecords('tbl8IOboEGdwYHqJck2', {
-      filter: 'created_by_user_id = "' + userId + '"',
+    const bizRecords = await teable.listRecords(BUSINESSES_TABLE_ID, {
+      filter: { fieldId: 'created_by_user_id', operator: 'is', value: userId },
       maxRecords: 100,
     });
-    businessOwnerships = bizRecords.records.map(r => r.id);
+    businessOwnerships = bizRecords.records.map(r => r.id as string);
   } catch (e) {
     console.warn('Failed to fetch business ownerships:', e);
   }
@@ -141,13 +159,13 @@ export default async function handler(
   // Fetch user's staff assignments
   let staffAssignments: any[] = [];
   try {
-    const staffRecords = await teable.listRecords('tblFemWKDqyaQtOqDCV', {
-      filter: 'user_id = "' + userId + '"',
+    const staffRecords = await teable.listRecords(STAFF_TABLE_ID, {
+      filter: { fieldId: 'user_id', operator: 'is', value: userId },
       maxRecords: 100,
     });
     staffAssignments = staffRecords.records.map(r => ({
-      businessId: r.fields.business_id,
-      role: r.fields.role,
+      businessId: r.fields.business_id as string,
+      role: r.fields.role as string,
     }));
   } catch (e) {
     console.warn('Failed to fetch staff assignments:', e);
@@ -164,7 +182,7 @@ export default async function handler(
   const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
 
   try {
-    await teable.createRecord('tblap3ykSwQQk276MdN', {
+    await teable.createRecord(SESSIONS_TABLE_ID, {
       session_token_hash: sessionId,
       user_id: userId,
       roles: JSON.stringify(roles),
@@ -182,8 +200,8 @@ export default async function handler(
   // Get user public reference
   let publicReference = '';
   try {
-    const userRecords = await teable.listRecords('tblB6Wiwy4KOx3Tjgui', {
-      filter: 'id = "' + userId + '"',
+    const userRecords = await teable.listRecords(USERS_TABLE_ID, {
+      filter: { fieldId: 'id', operator: 'is', value: userId },
       maxRecords: 1,
     });
     if (userRecords.records.length > 0) {
