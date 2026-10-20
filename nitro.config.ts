@@ -8,11 +8,7 @@ export default defineNitroConfig({
   routeRules: {
     '/api/**': { cors: true },
   },
-  ssr: {
-    routeRules: {
-      '/**': { ssr: true },
-    },
-  },
+  serveStatic: true,
   handlers: [
     { route: '/api/health', handler: 'server/routes/api/health.ts', format: 'node' },
     { route: '/api/auth/request-otp', handler: 'server/routes/api/auth/request-otp.ts', format: 'node' },
