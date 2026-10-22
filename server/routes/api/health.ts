@@ -1,13 +1,17 @@
-﻿import type { IncomingMessage, ServerResponse } from 'http';
-import { jsonResponse } from '../../lib/node-helpers.ts';
+﻿import { H3Event } from 'h3';
 
-export default async function handler(
-  req: IncomingMessage,
-  res: ServerResponse
-): Promise<void> {
+export default async function handler(event: H3Event): Promise<void> {
+  const req = event.node.req;
+  const res = event.node.res;
+
   if (req.method === 'GET') {
-    return jsonResponse(res, 200, { ok: true });
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    res.statusCode = 200;
+    res.end(JSON.stringify({ ok: true }));
+    return;
   }
 
-  return jsonResponse(res, 405, { ok: false, code: 'METHOD_NOT_ALLOWED' });
+  res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  res.statusCode = 405;
+  res.end(JSON.stringify({ ok: false, code: 'METHOD_NOT_ALLOWED' }));
 }

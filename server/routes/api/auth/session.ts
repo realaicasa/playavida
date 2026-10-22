@@ -1,6 +1,6 @@
+import { H3Event } from 'h3';
 import { getTeableClient, Filter } from '../../../lib/teable.js';
-import type { IncomingMessage, ServerResponse } from 'http';
-import { getCookieHeader, jsonResponse } from '../../../lib/node-helpers.js';
+import { getCookieHeader } from '../../../lib/node-helpers.js';
 
 const SESSIONS_TABLE_ID = process.env.TEABLE_SESSIONS_TABLE_ID;
 if (!SESSIONS_TABLE_ID) {
@@ -8,22 +8,38 @@ if (!SESSIONS_TABLE_ID) {
 }
 const USERS_TABLE_ID = process.env.TEABLE_TABLE_USERS || 'tblB6Wiwy4KOx3Tjgui';
 
-export default async function handler(
-  req: IncomingMessage,
-  res: ServerResponse
-): Promise<void> {
+function jsonResponse(res: any, status: number, body: object): void {
+  res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  res.statusCode = status;
+  res.end(JSON.stringify(body));
+}
+
+function getCookieHeader(req: any): string {
+  return req.headers.cookie || '';
+}
+
+export default async function handler(event: any): Promise<void> {
+  const req = event.node.req;
+  const res = event.node.res;
+
   if (req.method !== 'GET') {
-    return jsonResponse(res, 405, { ok: false, code: 'METHOD_NOT_ALLOWED' });
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    res.statusCode = 405;
+    res.end(JSON.stringify({ ok: false, code: 'METHOD_NOT_ALLOWED' }));
+    return;
   }
 
   try {
     // Get session cookie
-    const cookieHeader = getCookieHeader(req);
+    const cookieHeader = req.headers.cookie || '';
     const sessionMatch = cookieHeader.match(/session_id=([^;]+)/);
     const sessionId = sessionMatch?.[1];
 
     if (!sessionId) {
-      return jsonResponse(res, 200, { authenticated: false });
+      return new Response(JSON.stringify({ authenticated: false }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json; charset=utf-8' },
+      });
     }
 
     let teable;
@@ -31,7 +47,10 @@ export default async function handler(
       teable = getTeableClient();
     } catch (e: any) {
       console.error('Teable client init failed:', e?.message || e);
-      return jsonResponse(res, 500, { ok: false, code: 'TEABLE_CONFIG_ERROR', error: e?.message || 'Teable configuration error' });
+      res.setHeader('Content-Type', 'application/json; charset=utf-8');
+      res.statusCode = 500;
+      res.end(JSON.stringify({ ok: false, code: 'TEABLE_CONFIG_ERROR', error: e?.message || 'Teable configuration error' }));
+      return;
     }
 
     // Validate session
@@ -43,13 +62,19 @@ export default async function handler(
       });
 
       if (sessionRecords.records.length === 0) {
-        return jsonResponse(res, 200, { authenticated: false });
+        return new Response(JSON.stringify({ authenticated: false }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json; charset=utf-8' },
+        });
       }
 
       sessionRecord = sessionRecords.records[0];
     } catch (e: any) {
       console.error('Session validation error:', e?.message || e);
-      return jsonResponse(res, 200, { authenticated: false });
+      return new Response(JSON.stringify({ authenticated: false }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json; charset=utf-8' },
+      });
     }
 
     const sessionFields = sessionRecord.fields as any;
@@ -81,17 +106,31 @@ export default async function handler(
       console.warn('Failed to fetch user public reference:', e);
     }
 
-    return jsonResponse(res, 200, {
+    const responseBody = JSON.stringify({
       authenticated: true,
       userId: sessionFields.user_id as string,
       public_reference: publicReference,
-      roles,
-      businessOwnerships,
-      staffAssignments,
+      roles: JSON.parse(sessionFields.roles || '["member"]'),
+      businessOwnerships: JSON.parse(sessionFields.business_ownerships || '[]'),
+      staffAssignments: JSON.parse(sessionFields.staff_assignments || '[]'),
       exp: Math.floor(new Date(sessionFields.expires_at as string).getTime() / 1000),
     });
+
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    res.statusCode = 200;
+    res.end(JSON.stringify({
+      authenticated: true,
+      userId: sessionFields.user_id as string,
+      public_reference: publicReference,
+      roles: JSON.parse(sessionFields.roles || '["member"]'),
+      businessOwnerships: JSON.parse(sessionFields.business_ownerships || '[]'),
+      staffAssignments: JSON.parse(sessionFields.staff_assignments || '[]'),
+      exp: Math.floor(new Date(sessionFields.expires_at as string).getTime() / 1000),
+    }));
   } catch (error: any) {
     console.error('Session validation error:', error?.message || error);
-    return jsonResponse(res, 200, { authenticated: false });
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    res.statusCode = 200;
+    res.end(JSON.stringify({ authenticated: false }));
   }
 }

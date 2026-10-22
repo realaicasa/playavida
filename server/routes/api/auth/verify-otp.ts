@@ -1,7 +1,6 @@
-import { getTeableClient, Filter } from '../../../lib/teable.js';
+import { H3Event } from 'h3';
+import { getTeableClient } from '../../../lib/teable.js';
 import crypto from 'crypto';
-import type { IncomingMessage, ServerResponse } from 'http';
-import { parseJsonBody, jsonResponse, ParsedBody } from '../../../lib/node-helpers.js';
 
 const OTP_TABLE_ID = process.env.TEABLE_OTP_TABLE_ID;
 if (!OTP_TABLE_ID) {
@@ -19,37 +18,48 @@ function getEmailHash(email: string): string {
   return crypto.createHash('sha256').update(email.toLowerCase().trim()).digest('hex');
 }
 
-interface VerifyOtpBody extends ParsedBody {
-  email?: unknown;
-  code?: unknown;
-}
+export default async function handler(event: any): Promise<void> {
+  const req = event.node.req;
+  const res = event.node.res;
 
-export default async function handler(
-  req: IncomingMessage,
-  res: ServerResponse
-): Promise<void> {
   if (req.method !== 'POST') {
-    return jsonResponse(res, 405, { ok: false, code: 'METHOD_NOT_ALLOWED' });
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    res.statusCode = 405;
+    res.end(JSON.stringify({ ok: false, code: 'METHOD_NOT_ALLOWED' }));
+    return;
   }
 
-  let body: VerifyOtpBody;
+  let body: any;
   try {
-    body = await parseJsonBody<VerifyOtpBody>(req);
-  } catch (e: any) {
-    if (e.message === 'EMPTY_BODY' || e.message === 'INVALID_JSON' || e.message === 'BODY_TOO_LARGE') {
-      return jsonResponse(res, 400, { ok: false, code: 'INVALID_JSON' });
+    const chunks: Buffer[] = [];
+    for await (const chunk of req) {
+      const buf = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk, 'utf8');
+      chunks.push(buf);
     }
-    return jsonResponse(res, 400, { ok: false, code: 'INVALID_JSON' });
+    const bodyBuffer = Buffer.concat(chunks);
+    body = JSON.parse(bodyBuffer.toString('utf8'));
+  } catch (e: any) {
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    res.statusCode = 400;
+    res.end(JSON.stringify({ ok: false, code: 'INVALID_JSON' }));
+    return;
   }
+
   const email = String(body.email ?? '').toLowerCase().trim();
   const code = String(body.code ?? '').trim();
 
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    return jsonResponse(res, 400, { ok: false, code: 'INVALID_EMAIL' });
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    res.statusCode = 400;
+    res.end(JSON.stringify({ ok: false, code: 'INVALID_EMAIL' }));
+    return;
   }
 
   if (!code || !/^\d{6}$/.test(code)) {
-    return jsonResponse(res, 400, { ok: false, code: 'INVALID_CODE' });
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    res.statusCode = 400;
+    res.end(JSON.stringify({ ok: false, code: 'INVALID_CODE' }));
+    return;
   }
 
   let teable;
@@ -57,7 +67,10 @@ export default async function handler(
     teable = getTeableClient();
   } catch (e: any) {
     console.error('Teable client init failed:', e?.message || e);
-    return jsonResponse(res, 500, { ok: false, code: 'TEABLE_CONFIG_ERROR', error: e?.message || 'Teable configuration error' });
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    res.statusCode = 500;
+    res.end(JSON.stringify({ ok: false, code: 'TEABLE_CONFIG_ERROR', error: e?.message || 'Teable configuration error' }));
+    return;
   }
 
   const emailHash = getEmailHash(email);
@@ -65,7 +78,7 @@ export default async function handler(
   // Find valid OTP
   let otpRecord;
   try {
-    const otpRecords = await teable.listRecords(OTP_TABLE_ID, {
+    const otpRecords = await teable.listRecords('tblVe1AhQ3zLW3eijnw', {
       filter: {
         conjunction: 'AND',
         conditions: [
@@ -78,26 +91,38 @@ export default async function handler(
     });
 
     if (otpRecords.records.length === 0) {
-      return jsonResponse(res, 400, { ok: false, code: 'INVALID_CODE' });
+      res.setHeader('Content-Type', 'application/json; charset=utf-8');
+      res.statusCode = 400;
+      res.end(JSON.stringify({ ok: false, code: 'INVALID_CODE' }));
+      return;
     }
 
     otpRecord = otpRecords.records[0];
   } catch (e: any) {
     console.error('Failed to fetch OTP:', e?.message || e);
-    return jsonResponse(res, 500, { ok: false, code: 'OTP_FETCH_FAILED', error: e?.message || 'Unknown error' });
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    res.statusCode = 500;
+    res.end(JSON.stringify({ ok: false, code: 'OTP_FETCH_FAILED', error: e?.message || 'Unknown error' }));
+    return;
   }
 
   const otpFields = otpRecord.fields as any;
 
   // Check attempts
   if ((otpFields.attempt_count || 0) >= 5) {
-    return jsonResponse(res, 429, { ok: false, code: 'RATE_LIMITED' });
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    res.statusCode = 429;
+    res.end(JSON.stringify({ ok: false, code: 'RATE_LIMITED' }));
+    return;
   }
 
   // Verify OTP
   const storedHash = otpRecord.fields.code_hash as string;
   if (!storedHash) {
-    return jsonResponse(res, 400, { ok: false, code: 'INVALID_CODE' });
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    res.statusCode = 400;
+    res.end(JSON.stringify({ ok: false, code: 'INVALID_CODE' }));
+    return;
   }
 
   const [salt, hash] = storedHash.split(':');
@@ -105,15 +130,18 @@ export default async function handler(
 
   if (!crypto.timingSafeEqual(Buffer.from(hash), Buffer.from(verifyHash))) {
     // Increment attempts
-    await teable.updateRecord(OTP_TABLE_ID, otpRecord.id as string, {
+    await teable.updateRecord('tblVe1AhQ3zLW3eijnw', otpRecord.id as string, {
       attempt_count: (otpFields.attempt_count || 0) + 1,
     });
 
-    return jsonResponse(res, 400, { ok: false, code: 'INVALID_CODE' });
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    res.statusCode = 400;
+    res.end(JSON.stringify({ ok: false, code: 'INVALID_CODE' }));
+    return;
   }
 
   // Mark OTP as consumed
-  await teable.updateRecord(OTP_TABLE_ID, otpRecord.id as string, {
+  await teable.updateRecord('tblVe1AhQ3zLW3eijnw', otpRecord.id as string, {
     status: 'consumed',
     consumed_at: new Date().toISOString(),
   });
@@ -121,15 +149,15 @@ export default async function handler(
   // Find or create user
   let userRecord;
   try {
-    const userRecords = await teable.listRecords(USERS_TABLE_ID, {
-      filter: { fieldId: 'email', operator: 'is', value: email },
+    const userRecords = await teable.listRecords('tblB6Wiwy4KOx3Tjgui', {
+      filter: { fieldId: 'email', operator: 'is', value: req.body.email },
       maxRecords: 1,
     });
 
     if (userRecords.records.length === 0) {
       // Create new user
-      const newUser = await teable.createRecord(USERS_TABLE_ID, {
-        email: email,
+      const newUser = await teable.createRecord('tblB6Wiwy4KOx3Tjgui', {
+        email: req.body.email,
         role: 'member',
         created_at: new Date().toISOString(),
       });
@@ -139,7 +167,10 @@ export default async function handler(
     }
   } catch (e: any) {
     console.error('Failed to find/create user:', e?.message || e);
-    return jsonResponse(res, 500, { ok: false, code: 'USER_CREATE_FAILED', error: e?.message || 'Unknown error' });
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    res.statusCode = 500;
+    res.end(JSON.stringify({ ok: false, code: 'USER_CREATE_FAILED', error: e?.message || 'Unknown error' }));
+    return;
   }
 
   const userId = userRecord.id;
@@ -147,7 +178,7 @@ export default async function handler(
   // Fetch user's business ownerships
   let businessOwnerships: string[] = [];
   try {
-    const bizRecords = await teable.listRecords(BUSINESSES_TABLE_ID, {
+    const bizRecords = await teable.listRecords('tbl8IOboEGdwYHqJck2', {
       filter: { fieldId: 'created_by_user_id', operator: 'is', value: userId },
       maxRecords: 100,
     });
@@ -159,7 +190,7 @@ export default async function handler(
   // Fetch user's staff assignments
   let staffAssignments: any[] = [];
   try {
-    const staffRecords = await teable.listRecords(STAFF_TABLE_ID, {
+    const staffRecords = await teable.listRecords('tblFemWKDqyaQtOqDCV', {
       filter: { fieldId: 'user_id', operator: 'is', value: userId },
       maxRecords: 100,
     });
@@ -182,7 +213,7 @@ export default async function handler(
   const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
 
   try {
-    await teable.createRecord(SESSIONS_TABLE_ID, {
+    await teable.createRecord('tblap3ykSwQQk276MdN', {
       session_token_hash: sessionId,
       user_id: userId,
       roles: JSON.stringify(roles),
@@ -194,13 +225,16 @@ export default async function handler(
     });
   } catch (e: any) {
     console.error('Failed to create session:', e?.message || e);
-    return jsonResponse(res, 500, { ok: false, code: 'SESSION_CREATE_FAILED', error: e?.message || 'Unknown error' });
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    res.statusCode = 500;
+    res.end(JSON.stringify({ ok: false, code: 'SESSION_CREATE_FAILED', error: e?.message || 'Unknown error' }));
+    return;
   }
 
   // Get user public reference
   let publicReference = '';
   try {
-    const userRecords = await teable.listRecords(USERS_TABLE_ID, {
+    const userRecords = await teable.listRecords('tblB6Wiwy4KOx3Tjgui', {
       filter: { fieldId: 'id', operator: 'is', value: userId },
       maxRecords: 1,
     });
@@ -212,7 +246,9 @@ export default async function handler(
   }
 
   // Set session cookie
-  return jsonResponse(res, 200, {
+  res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  res.statusCode = 200;
+  res.end(JSON.stringify({
     authenticated: true,
     userId,
     public_reference: publicReference,
@@ -220,5 +256,5 @@ export default async function handler(
     businessOwnerships: [],
     staffAssignments: [],
     exp: Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60,
-  });
+  }));
 }
