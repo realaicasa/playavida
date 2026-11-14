@@ -194,7 +194,7 @@ class TeableClient {
     const endpoint = `/table/${tableId}/record/${recordId}`;
     return this.request<TeableRecord>(endpoint, {
       method: 'PATCH',
-      body: JSON.stringify({ fields }),
+      body: JSON.stringify({ record: { fields } }),
     });
   }
 
