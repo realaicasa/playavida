@@ -141,7 +141,6 @@ export default async function handler(event: any): Promise<any> {
       // Create new user
       const newUser = await teable.createRecord('tblB6Wiwy4KOx3Tjgui', {
         email: email,
-        role: 'member',
         created_at: new Date().toISOString(),
       });
       userRecord = newUser.records[0];
@@ -196,12 +195,10 @@ export default async function handler(event: any): Promise<any> {
   try {
     await teable.createRecord('tblap3ykSwQQk276MdN', {
       session_token_hash: sessionId,
-      user_id: userId,
-      roles: JSON.stringify(roles),
-      business_ownerships: JSON.stringify(businessOwnerships),
-      staff_assignments: JSON.stringify([]),
+      user_id: { id: userId },
+      status: 'active',
+      issued_at: new Date().toISOString(),
       expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-      created_at: new Date().toISOString(),
       last_seen_at: new Date().toISOString(),
     });
   } catch (e: any) {

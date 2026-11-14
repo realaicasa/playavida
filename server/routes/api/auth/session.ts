@@ -62,6 +62,12 @@ export default async function handler(event: any): Promise<any> {
 
     const sessionFields = sessionRecord.fields as any;
 
+    // Extract user_id from link field (may be object or array)
+    let userId = sessionFields.user_id;
+    if (Array.isArray(userId)) userId = userId[0];
+    if (typeof userId === 'object' && userId !== null) userId = userId.id;
+    sessionFields.user_id = userId;
+
     // Update last seen
     try {
       await teable.updateRecord(SESSIONS_TABLE_ID, sessionRecord.id as string, {
