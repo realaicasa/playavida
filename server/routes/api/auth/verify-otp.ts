@@ -1,4 +1,4 @@
-import { H3Event } from 'h3';
+import { getMethod, readBody, setResponseStatus, setResponseHeader } from 'h3';
 import { getTeableClient } from '../../../lib/teable.js';
 import crypto from 'crypto';
 
@@ -18,48 +18,37 @@ function getEmailHash(email: string): string {
   return crypto.createHash('sha256').update(email.toLowerCase().trim()).digest('hex');
 }
 
-export default async function handler(event: any): Promise<void> {
-  const req = event.node.req;
-  const res = event.node.res;
+export default async function handler(event: any): Promise<any> {
+  const method = getMethod(event);
 
-  if (req.method !== 'POST') {
-    res.setHeader('Content-Type', 'application/json; charset=utf-8');
-    res.statusCode = 405;
-    res.end(JSON.stringify({ ok: false, code: 'METHOD_NOT_ALLOWED' }));
-    return;
+  if (method !== 'POST') {
+    setResponseHeader(event, 'Content-Type', 'application/json; charset=utf-8');
+    setResponseStatus(event, 405);
+    return { ok: false, code: 'METHOD_NOT_ALLOWED' };
   }
 
   let body: any;
   try {
-    const chunks: Buffer[] = [];
-    for await (const chunk of req) {
-      const buf = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk, 'utf8');
-      chunks.push(buf);
-    }
-    const bodyBuffer = Buffer.concat(chunks);
-    body = JSON.parse(bodyBuffer.toString('utf8'));
+    body = await readBody(event);
   } catch (e: any) {
-    res.setHeader('Content-Type', 'application/json; charset=utf-8');
-    res.statusCode = 400;
-    res.end(JSON.stringify({ ok: false, code: 'INVALID_JSON' }));
-    return;
+    setResponseHeader(event, 'Content-Type', 'application/json; charset=utf-8');
+    setResponseStatus(event, 400);
+    return { ok: false, code: 'INVALID_JSON' };
   }
 
   const email = String(body.email ?? '').toLowerCase().trim();
   const code = String(body.code ?? '').trim();
 
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    res.setHeader('Content-Type', 'application/json; charset=utf-8');
-    res.statusCode = 400;
-    res.end(JSON.stringify({ ok: false, code: 'INVALID_EMAIL' }));
-    return;
+    setResponseHeader(event, 'Content-Type', 'application/json; charset=utf-8');
+    setResponseStatus(event, 400);
+    return { ok: false, code: 'INVALID_EMAIL' };
   }
 
   if (!code || !/^\d{6}$/.test(code)) {
-    res.setHeader('Content-Type', 'application/json; charset=utf-8');
-    res.statusCode = 400;
-    res.end(JSON.stringify({ ok: false, code: 'INVALID_CODE' }));
-    return;
+    setResponseHeader(event, 'Content-Type', 'application/json; charset=utf-8');
+    setResponseStatus(event, 400);
+    return { ok: false, code: 'INVALID_CODE' };
   }
 
   let teable;
@@ -67,10 +56,9 @@ export default async function handler(event: any): Promise<void> {
     teable = getTeableClient();
   } catch (e: any) {
     console.error('Teable client init failed:', e?.message || e);
-    res.setHeader('Content-Type', 'application/json; charset=utf-8');
-    res.statusCode = 500;
-    res.end(JSON.stringify({ ok: false, code: 'TEABLE_CONFIG_ERROR', error: e?.message || 'Teable configuration error' }));
-    return;
+    setResponseHeader(event, 'Content-Type', 'application/json; charset=utf-8');
+    setResponseStatus(event, 500);
+    return { ok: false, code: 'TEABLE_CONFIG_ERROR', error: e?.message || 'Teable configuration error' };
   }
 
   const emailHash = getEmailHash(email);
@@ -91,38 +79,34 @@ export default async function handler(event: any): Promise<void> {
     });
 
     if (otpRecords.records.length === 0) {
-      res.setHeader('Content-Type', 'application/json; charset=utf-8');
-      res.statusCode = 400;
-      res.end(JSON.stringify({ ok: false, code: 'INVALID_CODE' }));
-      return;
+      setResponseHeader(event, 'Content-Type', 'application/json; charset=utf-8');
+      setResponseStatus(event, 400);
+      return { ok: false, code: 'INVALID_CODE' };
     }
 
     otpRecord = otpRecords.records[0];
   } catch (e: any) {
     console.error('Failed to fetch OTP:', e?.message || e);
-    res.setHeader('Content-Type', 'application/json; charset=utf-8');
-    res.statusCode = 500;
-    res.end(JSON.stringify({ ok: false, code: 'OTP_FETCH_FAILED', error: e?.message || 'Unknown error' }));
-    return;
+    setResponseHeader(event, 'Content-Type', 'application/json; charset=utf-8');
+    setResponseStatus(event, 500);
+    return { ok: false, code: 'OTP_FETCH_FAILED', error: e?.message || 'Unknown error' };
   }
 
   const otpFields = otpRecord.fields as any;
 
   // Check attempts
   if ((otpFields.attempt_count || 0) >= 5) {
-    res.setHeader('Content-Type', 'application/json; charset=utf-8');
-    res.statusCode = 429;
-    res.end(JSON.stringify({ ok: false, code: 'RATE_LIMITED' }));
-    return;
+    setResponseHeader(event, 'Content-Type', 'application/json; charset=utf-8');
+    setResponseStatus(event, 429);
+    return { ok: false, code: 'RATE_LIMITED' };
   }
 
   // Verify OTP
   const storedHash = otpRecord.fields.code_hash as string;
   if (!storedHash) {
-    res.setHeader('Content-Type', 'application/json; charset=utf-8');
-    res.statusCode = 400;
-    res.end(JSON.stringify({ ok: false, code: 'INVALID_CODE' }));
-    return;
+    setResponseHeader(event, 'Content-Type', 'application/json; charset=utf-8');
+    setResponseStatus(event, 400);
+    return { ok: false, code: 'INVALID_CODE' };
   }
 
   const [salt, hash] = storedHash.split(':');
@@ -134,10 +118,9 @@ export default async function handler(event: any): Promise<void> {
       attempt_count: (otpFields.attempt_count || 0) + 1,
     });
 
-    res.setHeader('Content-Type', 'application/json; charset=utf-8');
-    res.statusCode = 400;
-    res.end(JSON.stringify({ ok: false, code: 'INVALID_CODE' }));
-    return;
+    setResponseHeader(event, 'Content-Type', 'application/json; charset=utf-8');
+    setResponseStatus(event, 400);
+    return { ok: false, code: 'INVALID_CODE' };
   }
 
   // Mark OTP as consumed
@@ -150,14 +133,14 @@ export default async function handler(event: any): Promise<void> {
   let userRecord;
   try {
     const userRecords = await teable.listRecords('tblB6Wiwy4KOx3Tjgui', {
-      filter: { fieldId: 'email', operator: 'is', value: req.body.email },
+      filter: { fieldId: 'email', operator: 'is', value: email },
       maxRecords: 1,
     });
 
     if (userRecords.records.length === 0) {
       // Create new user
       const newUser = await teable.createRecord('tblB6Wiwy4KOx3Tjgui', {
-        email: req.body.email,
+        email: email,
         role: 'member',
         created_at: new Date().toISOString(),
       });
@@ -167,10 +150,9 @@ export default async function handler(event: any): Promise<void> {
     }
   } catch (e: any) {
     console.error('Failed to find/create user:', e?.message || e);
-    res.setHeader('Content-Type', 'application/json; charset=utf-8');
-    res.statusCode = 500;
-    res.end(JSON.stringify({ ok: false, code: 'USER_CREATE_FAILED', error: e?.message || 'Unknown error' }));
-    return;
+    setResponseHeader(event, 'Content-Type', 'application/json; charset=utf-8');
+    setResponseStatus(event, 500);
+    return { ok: false, code: 'USER_CREATE_FAILED', error: e?.message || 'Unknown error' };
   }
 
   const userId = userRecord.id;
@@ -209,7 +191,6 @@ export default async function handler(event: any): Promise<void> {
 
   // Create session
   const sessionId = crypto.randomBytes(32).toString('hex');
-  const sessionTokenHash = crypto.randomBytes(32).toString('hex');
   const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
 
   try {
@@ -225,10 +206,9 @@ export default async function handler(event: any): Promise<void> {
     });
   } catch (e: any) {
     console.error('Failed to create session:', e?.message || e);
-    res.setHeader('Content-Type', 'application/json; charset=utf-8');
-    res.statusCode = 500;
-    res.end(JSON.stringify({ ok: false, code: 'SESSION_CREATE_FAILED', error: e?.message || 'Unknown error' }));
-    return;
+    setResponseHeader(event, 'Content-Type', 'application/json; charset=utf-8');
+    setResponseStatus(event, 500);
+    return { ok: false, code: 'SESSION_CREATE_FAILED', error: e?.message || 'Unknown error' };
   }
 
   // Get user public reference
@@ -246,9 +226,11 @@ export default async function handler(event: any): Promise<void> {
   }
 
   // Set session cookie
-  res.setHeader('Content-Type', 'application/json; charset=utf-8');
-  res.statusCode = 200;
-  res.end(JSON.stringify({
+  const cookie = `session_id=${sessionId}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=${30 * 24 * 60 * 60}`;
+  setResponseHeader(event, 'Set-Cookie', cookie);
+  setResponseHeader(event, 'Content-Type', 'application/json; charset=utf-8');
+  setResponseStatus(event, 200);
+  return {
     authenticated: true,
     userId,
     public_reference: publicReference,
@@ -256,5 +238,5 @@ export default async function handler(event: any): Promise<void> {
     businessOwnerships: [],
     staffAssignments: [],
     exp: Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60,
-  }));
+  };
 }

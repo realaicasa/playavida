@@ -1,4 +1,4 @@
-import { H3Event } from 'h3';
+import { getMethod, getRequestHeader, readBody, setResponseStatus, setResponseHeader } from 'h3';
 import { getTeableClient, Filter } from '../../../lib/teable.js';
 import crypto from 'crypto';
 
@@ -51,40 +51,30 @@ interface RequestOtpBody {
   email?: unknown;
 }
 
-export default async function handler(event: any): Promise<void> {
-  const req = event.node.req;
-  const res = event.node.res;
+export default async function handler(event: any): Promise<any> {
+  const method = getMethod(event);
 
-  if (req.method !== 'POST') {
-    res.setHeader('Content-Type', 'application/json; charset=utf-8');
-    res.statusCode = 405;
-    res.end(JSON.stringify({ ok: false, code: 'METHOD_NOT_ALLOWED' }));
-    return;
+  if (method !== 'POST') {
+    setResponseHeader(event, 'Content-Type', 'application/json; charset=utf-8');
+    setResponseStatus(event, 405);
+    return { ok: false, code: 'METHOD_NOT_ALLOWED' };
   }
 
-  let body: any;
+  let body: RequestOtpBody;
   try {
-    const chunks: Buffer[] = [];
-    for await (const chunk of req) {
-      const buf = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk, 'utf8');
-      chunks.push(buf);
-    }
-    const bodyBuffer = Buffer.concat(chunks);
-    body = JSON.parse(bodyBuffer.toString('utf8'));
+    body = await readBody<RequestOtpBody>(event);
   } catch (e: any) {
-    res.setHeader('Content-Type', 'application/json; charset=utf-8');
-    res.statusCode = 400;
-    res.end(JSON.stringify({ ok: false, code: 'INVALID_JSON' }));
-    return;
+    setResponseHeader(event, 'Content-Type', 'application/json; charset=utf-8');
+    setResponseStatus(event, 400);
+    return { ok: false, code: 'INVALID_JSON' };
   }
 
   const email = String(body.email ?? '').toLowerCase().trim();
 
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    res.setHeader('Content-Type', 'application/json; charset=utf-8');
-    res.statusCode = 400;
-    res.end(JSON.stringify({ ok: false, code: 'INVALID_EMAIL' }));
-    return;
+    setResponseHeader(event, 'Content-Type', 'application/json; charset=utf-8');
+    setResponseStatus(event, 400);
+    return { ok: false, code: 'INVALID_EMAIL' };
   }
 
   let teable;
@@ -92,10 +82,9 @@ export default async function handler(event: any): Promise<void> {
     teable = getTeableClient();
   } catch (e: any) {
     console.error('Teable client init failed:', e?.message || e);
-    res.setHeader('Content-Type', 'application/json; charset=utf-8');
-    res.statusCode = 500;
-    res.end(JSON.stringify({ ok: false, code: 'TEABLE_CONFIG_ERROR', error: e?.message || 'Teable configuration error' }));
-    return;
+    setResponseHeader(event, 'Content-Type', 'application/json; charset=utf-8');
+    setResponseStatus(event, 500);
+    return { ok: false, code: 'TEABLE_CONFIG_ERROR', error: e?.message || 'Teable configuration error' };
   }
 
   const emailHash = getEmailHash(email);
@@ -109,10 +98,9 @@ export default async function handler(event: any): Promise<void> {
     });
 
     if (recentOTPs.records.length >= 5) {
-      res.setHeader('Content-Type', 'application/json; charset=utf-8');
-      res.statusCode = 429;
-      res.end(JSON.stringify({ ok: false, code: 'RATE_LIMITED' }));
-      return;
+      setResponseHeader(event, 'Content-Type', 'application/json; charset=utf-8');
+      setResponseStatus(event, 429);
+      return { ok: false, code: 'RATE_LIMITED' };
     }
   } catch (e: any) {
     console.warn('OTP rate limit check failed:', e?.message || e);
@@ -135,23 +123,21 @@ export default async function handler(event: any): Promise<void> {
     });
   } catch (e: any) {
     console.error('Failed to store OTP:', e?.message || e);
-    res.setHeader('Content-Type', 'application/json; charset=utf-8');
-    res.statusCode = 500;
-    res.end(JSON.stringify({ ok: false, code: 'OTP_STORE_FAILED', error: e?.message || 'Unknown error' }));
-    return;
+    setResponseHeader(event, 'Content-Type', 'application/json; charset=utf-8');
+    setResponseStatus(event, 500);
+    return { ok: false, code: 'OTP_STORE_FAILED', error: e?.message || 'Unknown error' };
   }
 
   try {
     await sendOTPEmail(email, code);
   } catch (e: any) {
     console.error('Failed to send OTP email:', e?.message || e);
-    res.setHeader('Content-Type', 'application/json; charset=utf-8');
-    res.statusCode = 500;
-    res.end(JSON.stringify({ ok: false, code: 'EMAIL_SEND_FAILED', error: e?.message || 'Unknown error' }));
-    return;
+    setResponseHeader(event, 'Content-Type', 'application/json; charset=utf-8');
+    setResponseStatus(event, 500);
+    return { ok: false, code: 'EMAIL_SEND_FAILED', error: e?.message || 'Unknown error' };
   }
 
-  res.setHeader('Content-Type', 'application/json; charset=utf-8');
-  res.statusCode = 200;
-  res.end(JSON.stringify({ ok: true }));
+  setResponseHeader(event, 'Content-Type', 'application/json; charset=utf-8');
+  setResponseStatus(event, 200);
+  return { ok: true };
 }

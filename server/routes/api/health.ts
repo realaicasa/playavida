@@ -1,17 +1,15 @@
-﻿import { H3Event } from 'h3';
+﻿import { getMethod, setResponseStatus, setResponseHeader } from 'h3';
 
-export default async function handler(event: H3Event): Promise<void> {
-  const req = event.node.req;
-  const res = event.node.res;
+export default async function handler(event: any): Promise<any> {
+  const method = getMethod(event);
 
-  if (req.method === 'GET') {
-    res.setHeader('Content-Type', 'application/json; charset=utf-8');
-    res.statusCode = 200;
-    res.end(JSON.stringify({ ok: true }));
-    return;
+  if (method === 'GET') {
+    setResponseHeader(event, 'Content-Type', 'application/json; charset=utf-8');
+    setResponseStatus(event, 200);
+    return { ok: true };
   }
 
-  res.setHeader('Content-Type', 'application/json; charset=utf-8');
-  res.statusCode = 405;
-  res.end(JSON.stringify({ ok: false, code: 'METHOD_NOT_ALLOWED' }));
+  setResponseHeader(event, 'Content-Type', 'application/json; charset=utf-8');
+  setResponseStatus(event, 405);
+  return { ok: false, code: 'METHOD_NOT_ALLOWED' };
 }
