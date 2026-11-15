@@ -57,7 +57,7 @@ import { RivieraMayaMap } from './components/RivieraMayaMap';
 import { QuickLookupModal } from './components/QuickLookupModal';
 import { WikiGlobalSearch } from './components/WikiGlobalSearch';
 import { Footer } from './components/Footer';
-import { LandingPage } from './components/LandingPage';
+import { AdminDashboard } from './components/AdminDashboard';
 import { QRcasasModal } from './components/QRcasasModal';
 import {
   PrivacyModal,
@@ -86,6 +86,45 @@ export default function App() {
   // Active user - will be loaded from session on mount
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isSessionLoading, setIsSessionLoading] = useState(true);
+  const [isAdminOpen, setIsAdminOpen] = useState(false);
+  const [isSuperadmin, setIsSuperadmin] = useState(false);
+  const [siteSettings, setSiteSettings] = useState<{
+    brand_name: string;
+    place_name: string;
+    currency: string;
+    legal_privacy_en: string;
+    legal_privacy_es: string;
+    legal_terms_en: string;
+    legal_terms_es: string;
+    launch_mode_enabled: boolean;
+    waitlist_url: string;
+    show_sample_data: boolean;
+  }>({
+    brand_name: 'PlayaVida',
+    place_name: 'Playa del Carmen',
+    currency: 'MXN',
+    legal_privacy_en: '',
+    legal_privacy_es: '',
+    legal_terms_en: '',
+    legal_terms_es: '',
+    launch_mode_enabled: true,
+    waitlist_url: 'https://list.playavida.org/wait',
+    show_sample_data: true,
+  });
+
+  // Fetch site settings on mount
+  useEffect(() => {
+    fetch('/api/settings')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data && typeof data === 'object') {
+          setSiteSettings((prev) => ({ ...prev, ...data }));
+        }
+      })
+      .catch(() => {
+        // Keep defaults on error
+      });
+  }, []);
 
   // Navigation / View states
   const [selectedBusiness, setSelectedBusiness] = useState<PublicBusinessProjection | null>(null);
@@ -133,6 +172,18 @@ export default function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
+  // Check for admin route
+  useEffect(() => {
+    const checkAdmin = () => {
+      if (window.location.hash === '#admin' && isSuperadmin) {
+        setIsAdminOpen(true);
+      }
+    };
+    checkAdmin();
+    window.addEventListener('hashchange', checkAdmin);
+    return () => window.removeEventListener('hashchange', checkAdmin);
+  }, [isSuperadmin]);
+
   // Validate session on mount
   useEffect(() => {
     const validateSession = async () => {
@@ -141,6 +192,12 @@ export default function App() {
         if (res.ok) {
           const data = await res.json();
           if (data.authenticated && data.userId) {
+            // Fetch user details and superadmin status
+            const meRes = await fetch('/api/auth/me');
+            if (meRes.ok) {
+              const meData = await meRes.json();
+              setIsSuperadmin(meData.isSuperadmin || false);
+            }
             // Fetch user details from Teable
             const userRes = await fetch(`/api/users/${data.userId}`);
             if (userRes.ok) {
@@ -1104,6 +1161,12 @@ export default function App() {
           setIsWikiSearchOpen(false);
         }}
       />
+      {isAdminOpen && isSuperadmin && (
+        <AdminDashboard
+          language={language}
+          onClose={() => setIsAdminOpen(false)}
+        />
+      )}
     </div>
   );
 }
