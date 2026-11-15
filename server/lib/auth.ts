@@ -33,6 +33,11 @@ export async function validateSession(sessionId: string): Promise<{ valid: boole
     const sessionRecord = sessionRecords.records[0];
     const sessionFields = sessionRecord.fields as any;
 
+    // Extract user_id from link field (may be object or array)
+    let userId = sessionFields.user_id;
+    if (Array.isArray(userId)) userId = userId[0];
+    if (typeof userId === 'object' && userId !== null) userId = userId.id;
+
     // Update last accessed
     try {
       await teable.updateRecord(SESSIONS_TABLE_ID, sessionRecord.id as string, {
@@ -50,7 +55,7 @@ export async function validateSession(sessionId: string): Promise<{ valid: boole
       valid: true,
       context: {
         authenticated: true,
-        userId: sessionFields.user_id as string,
+        userId: userId as string,
         roles,
         businessOwnerships,
         staffAssignments,
@@ -137,35 +142,60 @@ export function requireOwnership(businessIdParam: string = 'businessId') {
   };
 }
 
-export function requireStaff(businessIdParam: string = 'businessId') {
-  return async (request: Request, params?: Record<string, string>): Promise<{ context: any; error?: Response }> => {
-    const authResult = await requireAuth(request);
-    if (authResult.error) return authResult;
+export async function getCurrentUser(event: any): Promise<{
+  authenticated: boolean;
+  user?: any;
+  isSuperadmin: boolean;
+  isFoundingMember: boolean;
+}> {
+  const cookieHeader = (event.req?.headers?.cookie) || (typeof event.headers?.get === 'function' ? event.headers.get('cookie') : '') || '';
+  // h3 v2: use getRequestHeader if available
+  let cookie = '';
+  try {
+    const { getRequestHeader } = await import('h3');
+    cookie = getRequestHeader(event, 'cookie') || '';
+  } catch {
+    cookie = cookieHeader;
+  }
 
-    const businessId = params?.[businessIdParam] || new URL(request.url).searchParams.get(businessIdParam);
-    if (!businessId) {
-      return {
-        context: null,
-        error: new Response(JSON.stringify({ ok: false, code: 'MISSING_BUSINESS_ID' }), {
-          status: 400,
-          headers: { 'Content-Type': 'application/json' },
-        }),
-      };
+  const sessionMatch = cookie.match(/session_id=([^;]+)/);
+  const sessionId = sessionMatch?.[1];
+
+  if (!sessionId) {
+    return { authenticated: false, isSuperadmin: false, isFoundingMember: false };
+  }
+
+  const result = await validateSession(sessionId);
+  if (!result.valid || !result.context) {
+    return { authenticated: false, isSuperadmin: false, isFoundingMember: false };
+  }
+
+  const USERS_TABLE_ID = process.env.TEABLE_TABLE_USERS || 'tblB6Wiwy4KOx3Tjgui';
+  const teable = getTeableClient();
+
+  let user: any = null;
+  let isFoundingMember = false;
+  try {
+    const userRecords = await teable.listRecords(USERS_TABLE_ID, {
+      filter: { fieldId: 'user_id', operator: 'is', value: result.context.userId },
+      maxRecords: 1,
+    });
+    if (userRecords.records.length > 0) {
+      user = { id: userRecords.records[0].id, ...userRecords.records[0].fields };
+      isFoundingMember = user.is_founding_member === true;
     }
+  } catch (e) {
+    console.warn('Failed to fetch user details:', e);
+  }
 
-    const hasStaffAccess = authResult.context.staffAssignments.some(
-      (assignment: any) => assignment.businessId === businessId
-    );
-    if (!hasStaffAccess) {
-      return {
-        context: null,
-        error: new Response(JSON.stringify({ ok: false, code: 'FORBIDDEN' }), {
-          status: 403,
-          headers: { 'Content-Type': 'application/json' },
-        }),
-      };
-    }
+  const email = user?.email || '';
+  const superadminEmails = (process.env.SUPERADMIN_EMAILS || '').split(',').map((e: string) => e.trim().toLowerCase());
+  const isSuperadmin = superadminEmails.includes(email.toLowerCase());
 
-    return { context: authResult.context, error: undefined };
+  return {
+    authenticated: true,
+    user,
+    isSuperadmin,
+    isFoundingMember,
   };
 }
