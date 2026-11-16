@@ -187,12 +187,15 @@ export default function App() {
   useEffect(() => {
     const checkAdmin = () => {
       const isAdminPath = window.location.pathname === '/admin' || window.location.hash === '#admin';
-      if (isAdminPath) {
-        if (isSuperadmin) {
-          setIsAdminOpen(true);
-        } else if (!currentUser && !isSessionLoading) {
-          setIsAuthModalOpen(true);
-        }
+      if (!isAdminPath) return;
+      if (isSessionLoading) return; // Don't redirect while loading
+      if (isSuperadmin) {
+        setIsAdminOpen(true);
+      } else if (!currentUser) {
+        setIsAuthModalOpen(true);
+      } else {
+        // Authenticated but not superadmin → redirect to /
+        window.location.href = '/';
       }
     };
     checkAdmin();
@@ -1001,6 +1004,15 @@ export default function App() {
           reference={qrModalData.ref}
           title={qrModalData.title}
           language={language}
+          canonicalUrl={
+            qrModalData.ref.startsWith('BUS-')
+              ? `${window.location.origin}/?business=${qrModalData.ref}`
+              : qrModalData.ref.startsWith('EVT-')
+              ? `${window.location.origin}/?event=${qrModalData.ref}`
+              : qrModalData.ref.startsWith('GRP-')
+              ? `${window.location.origin}/?group=${qrModalData.ref}`
+              : undefined
+          }
         />
       )}
 
