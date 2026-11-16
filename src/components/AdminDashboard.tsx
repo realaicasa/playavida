@@ -2,6 +2,164 @@ import React, { useState, useEffect } from 'react';
 import { Language } from '../types';
 import { translations } from '../lib/i18n';
 
+// --- Reports Tab ---
+const ReportsTab: React.FC = () => {
+  const [reports, setReports] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch('/api/admin/reports')
+      .then((r) => r.json())
+      .then((data) => { setReports(data.reports || []); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, []);
+
+  const handleAction = async (action: string, targetType: string, targetId: string) => {
+    const body: any = { action, target_type: targetType, target_id: targetId };
+    if (action === 'purge') {
+      const confirm = prompt('Type DELETE to confirm permanent purge:');
+      if (confirm !== 'DELETE') return;
+      body.confirmation = 'DELETE';
+    }
+    await fetch('/api/admin/moderation', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    // Refresh
+    fetch('/api/admin/reports').then((r) => r.json()).then((data) => setReports(data.reports || []));
+  };
+
+  if (loading) return <p className="text-stone-500">Loading reports...</p>;
+
+  return (
+    <div className="space-y-4">
+      <h3 className="text-lg font-semibold text-stone-800">Reports & Moderation Queue</h3>
+      {reports.length === 0 ? (
+        <p className="text-sm text-stone-500">No reports.</p>
+      ) : (
+        <div className="space-y-2">
+          {reports.map((r: any) => (
+            <div key={r.id} className="p-3 border border-stone-200 rounded-lg text-sm">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="font-medium">{r.target_type}:{r.target_id}</span>
+                {r.repeat_reporter && <span className="px-2 py-0.5 bg-red-100 text-red-700 rounded text-xs">Repeat Reporter</span>}
+                {r.same_ip && <span className="px-2 py-0.5 bg-orange-100 text-orange-700 rounded text-xs">Same IP</span>}
+              </div>
+              <p className="text-stone-500 mt-1">Reason: {r.reason} | Reporter: {r.reporter_id} | {r.created_at}</p>
+              <div className="flex gap-2 mt-2">
+                <button onClick={() => handleAction('hide', r.target_type, r.target_id)} className="px-2 py-1 text-xs bg-stone-200 rounded hover:bg-stone-300">Hide</button>
+                <button onClick={() => handleAction('restore', r.target_type, r.target_id)} className="px-2 py-1 text-xs bg-green-100 text-green-700 rounded hover:bg-green-200">Restore</button>
+                <button onClick={() => handleAction('purge', r.target_type, r.target_id)} className="px-2 py-1 text-xs bg-red-100 text-red-700 rounded hover:bg-red-200">Purge</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// --- Users Tab ---
+const UsersTab: React.FC = () => {
+  const [users, setUsers] = useState<any[]>([]);
+  const [search, setSearch] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [newEmail, setNewEmail] = useState('');
+
+  const fetchUsers = (q?: string) => {
+    const url = q ? `/api/admin/users?search=${encodeURIComponent(q)}` : '/api/admin/users';
+    fetch(url).then((r) => r.json()).then((data) => { setUsers(data.users || []); setLoading(false); });
+  };
+
+  useEffect(() => { fetchUsers(); }, []);
+
+  const handleAction = async (action: string, userId: string, value?: boolean) => {
+    const body: any = { action, user_id: userId };
+    if (action === 'toggle_suspend') body.suspend = value;
+    if (action === 'toggle_founding') body.founding = value;
+    await fetch('/api/admin/users', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    fetchUsers(search);
+  };
+
+  const handleAddFounding = async () => {
+    if (!newEmail) return;
+    await fetch('/api/admin/users', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'add_founding_email', email: newEmail }) });
+    setNewEmail('');
+    fetchUsers(search);
+  };
+
+  if (loading) return <p className="text-stone-500">Loading users...</p>;
+
+  return (
+    <div className="space-y-4">
+      <h3 className="text-lg font-semibold text-stone-800">Users & Founding Member Allowlist</h3>
+      <div className="flex gap-2">
+        <input type="text" placeholder="Add founding email..." value={newEmail} onChange={(e) => setNewEmail(e.target.value)} className="flex-1 px-3 py-2 border border-stone-300 rounded-lg text-sm" />
+        <button onClick={handleAddFounding} className="px-4 py-2 bg-teal-500 text-white rounded-lg text-sm">Add</button>
+      </div>
+      <input type="text" placeholder="Search users..." value={search} onChange={(e) => { setSearch(e.target.value); fetchUsers(e.target.value); }} className="w-full px-3 py-2 border border-stone-300 rounded-lg text-sm" />
+      <div className="space-y-2">
+        {users.map((u: any) => (
+          <div key={u.id} className="p-3 border border-stone-200 rounded-lg text-sm flex items-center justify-between flex-wrap gap-2">
+            <div>
+              <span className="font-medium">{u.email}</span>
+              <span className="text-stone-500 ml-2">({u.public_reference})</span>
+              {u.is_founding_member && <span className="ml-2 px-2 py-0.5 bg-teal-100 text-teal-700 rounded text-xs">Founding</span>}
+              {u.is_suspended && <span className="ml-2 px-2 py-0.5 bg-red-100 text-red-700 rounded text-xs">Suspended</span>}
+            </div>
+            <div className="flex gap-2">
+              <button onClick={() => handleAction('toggle_suspend', u.id, !u.is_suspended)} className="px-2 py-1 text-xs bg-stone-200 rounded hover:bg-stone-300">{u.is_suspended ? 'Restore' : 'Suspend'}</button>
+              <button onClick={() => handleAction('toggle_founding', u.id, !u.is_founding_member)} className="px-2 py-1 text-xs bg-teal-100 text-teal-700 rounded hover:bg-teal-200">{u.is_founding_member ? 'Remove Founding' : 'Make Founding'}</button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+// --- Businesses Tab ---
+const BusinessesTab: React.FC = () => {
+  const [businesses, setBusinesses] = useState<any[]>([]);
+  const [search, setSearch] = useState('');
+  const [loading, setLoading] = useState(true);
+
+  const fetchBusinesses = (q?: string) => {
+    const url = q ? `/api/admin/businesses?search=${encodeURIComponent(q)}` : '/api/admin/businesses';
+    fetch(url).then((r) => r.json()).then((data) => { setBusinesses(data.businesses || []); setLoading(false); });
+  };
+
+  useEffect(() => { fetchBusinesses(); }, []);
+
+  const handleAction = async (businessId: string, hidden: boolean) => {
+    await fetch('/api/admin/businesses', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'toggle_hidden', business_id: businessId, hidden }) });
+    fetchBusinesses(search);
+  };
+
+  if (loading) return <p className="text-stone-500">Loading businesses...</p>;
+
+  return (
+    <div className="space-y-4">
+      <h3 className="text-lg font-semibold text-stone-800">Businesses & Pro Status</h3>
+      <input type="text" placeholder="Search businesses..." value={search} onChange={(e) => { setSearch(e.target.value); fetchBusinesses(e.target.value); }} className="w-full px-3 py-2 border border-stone-300 rounded-lg text-sm" />
+      <div className="space-y-2">
+        {businesses.map((b: any) => (
+          <div key={b.id} className="p-3 border border-stone-200 rounded-lg text-sm flex items-center justify-between flex-wrap gap-2">
+            <div>
+              <span className="font-medium">{b.name}</span>
+              <div className="flex gap-1 mt-1">
+                {b.is_pro && <span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-xs">Pro</span>}
+                {b.is_featured && <span className="px-2 py-0.5 bg-yellow-100 text-yellow-700 rounded text-xs">Featured</span>}
+                {b.is_sponsor && <span className="px-2 py-0.5 bg-purple-100 text-purple-700 rounded text-xs">Sponsor</span>}
+                {b.is_demo && <span className="px-2 py-0.5 bg-gray-100 text-gray-700 rounded text-xs">Demo</span>}
+                {b.is_hidden && <span className="px-2 py-0.5 bg-red-100 text-red-700 rounded text-xs">Hidden</span>}
+              </div>
+            </div>
+            <button onClick={() => handleAction(b.id, !b.is_hidden)} className="px-2 py-1 text-xs bg-stone-200 rounded hover:bg-stone-300">{b.is_hidden ? 'Restore' : 'Hide'}</button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 interface AdminDashboardProps {
   language: Language;
   onClose: () => void;
@@ -234,20 +392,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ language, onClos
               {message && <p className="text-sm text-stone-600">{message}</p>}
             </div>
           ) : activeTab === 'reports' ? (
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-stone-800">Reports & Moderation Queue</h3>
-              <p className="text-sm text-stone-500">Requires TEABLE_TABLE_REPORTS. Coming soon.</p>
-            </div>
+            <ReportsTab />
           ) : activeTab === 'users' ? (
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-stone-800">Users & Founding Member Allowlist</h3>
-              <p className="text-sm text-stone-500">Requires TEABLE_TABLE_USERS. Coming soon.</p>
-            </div>
+            <UsersTab />
           ) : (
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-stone-800">Businesses & Pro Status</h3>
-              <p className="text-sm text-stone-500">Requires TEABLE_TABLE_BUSINESSES. Coming soon.</p>
-            </div>
+            <BusinessesTab />
           )}
         </div>
       </div>

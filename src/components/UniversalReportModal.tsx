@@ -53,24 +53,38 @@ export const UniversalReportModal: React.FC<UniversalReportModalProps> = ({
     setShowConfirmation(true);
   };
 
-  const handleFinalConfirm = () => {
+  const handleFinalConfirm = async () => {
     if (!currentUser) return;
 
-    playaVidaStore.submitReport({
-      reporter_user_id: currentUser.id,
-      target_entity_type: targetType,
-      target_reference: targetReference,
-      reason,
-      details: details.trim(),
-    });
+    try {
+      const res = await fetch('/api/reports', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          target_type: targetType,
+          target_id: targetReference,
+          reason: reason,
+          details: details.trim(),
+        }),
+      });
 
-    setSubmitted(true);
-    setTimeout(() => {
-      setSubmitted(false);
-      setShowConfirmation(false);
-      setDetails('');
-      onClose();
-    }, 2000);
+      if (res.ok) {
+        setSubmitted(true);
+        setTimeout(() => {
+          setSubmitted(false);
+          setShowConfirmation(false);
+          setDetails('');
+          onClose();
+        }, 2000);
+      } else {
+        const data = await res.json();
+        console.error('Report submission failed:', data);
+        alert(data.code || 'Report submission failed');
+      }
+    } catch (e) {
+      console.error('Report submission error:', e);
+      alert('Network error');
+    }
   };
 
   return (
