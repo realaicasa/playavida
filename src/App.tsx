@@ -377,6 +377,11 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  // If admin dashboard is open, render it as standalone full-page view
+  if (isAdminOpen && isSuperadmin) {
+    return <AdminDashboard language={language} onClose={() => { setIsAdminOpen(false); window.location.hash = ''; window.location.pathname = '/'; }} />;
+  }
+
   return (
     <div className="min-h-screen bg-[#FAF9F6] text-stone-900 flex flex-col font-['Inter',sans-serif]">
       {showIntro && (
@@ -1202,12 +1207,6 @@ export default function App() {
           setIsWikiSearchOpen(false);
         }}
       />
-      {isAdminOpen && isSuperadmin && (
-        <AdminDashboard
-          language={language}
-          onClose={() => setIsAdminOpen(false)}
-        />
-      )}
     </div>
   );
 }

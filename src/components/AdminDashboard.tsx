@@ -232,16 +232,23 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ language, onClos
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-stone-900/50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-stone-200">
-          <h2 className="text-xl font-bold text-stone-900">Admin Dashboard</h2>
-          <button onClick={onClose} className="text-stone-500 hover:text-stone-900 text-2xl leading-none">&times;</button>
+    <div className="min-h-screen bg-slate-50">
+      {/* Top Bar */}
+      <div className="sticky top-0 z-20 bg-white border-b border-stone-200 shadow-sm">
+        <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <h1 className="text-xl font-bold text-stone-900">PlayaVida Admin</h1>
+            <span className="px-2 py-0.5 bg-teal-100 text-teal-700 rounded text-xs font-medium">Superadmin</span>
+          </div>
+          <button onClick={onClose} className="px-4 py-2 text-sm font-medium text-stone-600 hover:text-stone-900 border border-stone-300 rounded-lg hover:bg-stone-50 transition-colors">
+            Back to Live Site
+          </button>
         </div>
+      </div>
 
-        {/* Tabs */}
-        <div className="flex border-b border-stone-200 overflow-x-auto">
+      {/* Tab Navigation */}
+      <div className="bg-white border-b border-stone-200">
+        <div className="max-w-6xl mx-auto px-4 flex gap-1 overflow-x-auto">
           {TABS.map((tab) => (
             <button
               key={tab.id}
@@ -256,149 +263,149 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ language, onClos
             </button>
           ))}
         </div>
+      </div>
 
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6">
-          {loading ? (
-            <p className="text-stone-500">Loading...</p>
-          ) : activeTab === 'platform' ? (
-            <div className="space-y-6">
-              <h3 className="text-lg font-semibold text-stone-800">Platform & Launch Controls</h3>
+      {/* Content */}
+      <div className="max-w-6xl mx-auto px-4 py-6">
+        {loading ? (
+          <p className="text-stone-500">Loading...</p>
+        ) : activeTab === 'platform' ? (
+          <div className="space-y-6">
+            <h3 className="text-lg font-semibold text-stone-800">Platform & Launch Controls</h3>
 
-              {/* Launch Mode Toggle */}
-              <div className="flex items-center justify-between p-4 bg-stone-50 rounded-xl">
-                <div>
-                  <p className="font-medium text-stone-800">Launch Mode Enabled</p>
-                  <p className="text-xs text-stone-500">When ON, unauthenticated visitors are redirected to the waitlist.</p>
-                </div>
-                <button
-                  onClick={() => updateField('launch_mode_enabled', !settings?.launch_mode_enabled)}
-                  className={`w-12 h-6 rounded-full transition-colors ${settings?.launch_mode_enabled ? 'bg-teal-500' : 'bg-stone-300'}`}
-                >
-                  <span className={`block w-5 h-5 rounded-full bg-white shadow transition-transform ${settings?.launch_mode_enabled ? 'translate-x-6' : 'translate-x-0.5'}`} />
-                </button>
-              </div>
-
-              {/* Waitlist URL */}
+            {/* Launch Mode Toggle */}
+            <div className="flex items-center justify-between p-4 bg-white rounded-xl border border-stone-200">
               <div>
-                <label className="block text-sm font-medium text-stone-700 mb-1">Waitlist URL</label>
-                <input
-                  type="text"
-                  value={settings?.waitlist_url || ''}
-                  onChange={(e) => updateField('waitlist_url', e.target.value)}
-                  className="w-full px-3 py-2 border border-stone-300 rounded-lg text-sm"
-                />
+                <p className="font-medium text-stone-800">Launch Mode Enabled</p>
+                <p className="text-xs text-stone-500">When ON, unauthenticated visitors are redirected to the waitlist.</p>
               </div>
-
-              {/* Show Sample Data Toggle */}
-              <div className="flex items-center justify-between p-4 bg-stone-50 rounded-xl">
-                <div>
-                  <p className="font-medium text-stone-800">Show Sample Data</p>
-                  <p className="text-xs text-stone-500">Display demo/sample businesses on the platform.</p>
-                </div>
-                <button
-                  onClick={() => updateField('show_sample_data', !settings?.show_sample_data)}
-                  className={`w-12 h-6 rounded-full transition-colors ${settings?.show_sample_data ? 'bg-teal-500' : 'bg-stone-300'}`}
-                >
-                  <span className={`block w-5 h-5 rounded-full bg-white shadow transition-transform ${settings?.show_sample_data ? 'translate-x-6' : 'translate-x-0.5'}`} />
-                </button>
-              </div>
-
-              {/* Brand Name */}
-              <div>
-                <label className="block text-sm font-medium text-stone-700 mb-1">Brand Name</label>
-                <input
-                  type="text"
-                  value={settings?.brand_name || ''}
-                  onChange={(e) => updateField('brand_name', e.target.value)}
-                  className="w-full px-3 py-2 border border-stone-300 rounded-lg text-sm"
-                />
-              </div>
-
-              {/* Place Name */}
-              <div>
-                <label className="block text-sm font-medium text-stone-700 mb-1">Place Name</label>
-                <input
-                  type="text"
-                  value={settings?.place_name || ''}
-                  onChange={(e) => updateField('place_name', e.target.value)}
-                  className="w-full px-3 py-2 border border-stone-300 rounded-lg text-sm"
-                />
-              </div>
-
-              {/* Currency */}
-              <div>
-                <label className="block text-sm font-medium text-stone-700 mb-1">Currency</label>
-                <input
-                  type="text"
-                  value={settings?.currency || ''}
-                  onChange={(e) => updateField('currency', e.target.value)}
-                  className="w-full px-3 py-2 border border-stone-300 rounded-lg text-sm"
-                />
-              </div>
-
-              {/* Legal Privacy EN */}
-              <div>
-                <label className="block text-sm font-medium text-stone-700 mb-1">Privacy Policy (EN)</label>
-                <textarea
-                  value={settings?.legal_privacy_en || ''}
-                  onChange={(e) => updateField('legal_privacy_en', e.target.value)}
-                  rows={4}
-                  className="w-full px-3 py-2 border border-stone-300 rounded-lg text-sm"
-                />
-              </div>
-
-              {/* Legal Privacy ES */}
-              <div>
-                <label className="block text-sm font-medium text-stone-700 mb-1">Privacy Policy (ES)</label>
-                <textarea
-                  value={settings?.legal_privacy_es || ''}
-                  onChange={(e) => updateField('legal_privacy_es', e.target.value)}
-                  rows={4}
-                  className="w-full px-3 py-2 border border-stone-300 rounded-lg text-sm"
-                />
-              </div>
-
-              {/* Legal Terms EN */}
-              <div>
-                <label className="block text-sm font-medium text-stone-700 mb-1">Terms of Service (EN)</label>
-                <textarea
-                  value={settings?.legal_terms_en || ''}
-                  onChange={(e) => updateField('legal_terms_en', e.target.value)}
-                  rows={4}
-                  className="w-full px-3 py-2 border border-stone-300 rounded-lg text-sm"
-                />
-              </div>
-
-              {/* Legal Terms ES */}
-              <div>
-                <label className="block text-sm font-medium text-stone-700 mb-1">Terms of Service (ES)</label>
-                <textarea
-                  value={settings?.legal_terms_es || ''}
-                  onChange={(e) => updateField('legal_terms_es', e.target.value)}
-                  rows={4}
-                  className="w-full px-3 py-2 border border-stone-300 rounded-lg text-sm"
-                />
-              </div>
-
-              {/* Save Button */}
               <button
-                onClick={handleSave}
-                disabled={saving}
-                className="px-6 py-2 bg-teal-500 text-white rounded-lg font-medium hover:bg-teal-600 disabled:opacity-50"
+                onClick={() => updateField('launch_mode_enabled', !settings?.launch_mode_enabled)}
+                className={`w-12 h-6 rounded-full transition-colors ${settings?.launch_mode_enabled ? 'bg-teal-500' : 'bg-stone-300'}`}
               >
-                {saving ? (isEs ? 'Guardando...' : 'Saving...') : (isEs ? 'Guardar' : 'Save')}
+                <span className={`block w-5 h-5 rounded-full bg-white shadow transition-transform ${settings?.launch_mode_enabled ? 'translate-x-6' : 'translate-x-0.5'}`} />
               </button>
-              {message && <p className="text-sm text-stone-600">{message}</p>}
             </div>
-          ) : activeTab === 'reports' ? (
-            <ReportsTab />
-          ) : activeTab === 'users' ? (
-            <UsersTab />
-          ) : (
-            <BusinessesTab />
-          )}
-        </div>
+
+            {/* Waitlist URL */}
+            <div>
+              <label className="block text-sm font-medium text-stone-700 mb-1">Waitlist URL</label>
+              <input
+                type="text"
+                value={settings?.waitlist_url || ''}
+                onChange={(e) => updateField('waitlist_url', e.target.value)}
+                className="w-full px-3 py-2 border border-stone-300 rounded-lg text-sm"
+              />
+            </div>
+
+            {/* Show Sample Data Toggle */}
+            <div className="flex items-center justify-between p-4 bg-white rounded-xl border border-stone-200">
+              <div>
+                <p className="font-medium text-stone-800">Show Sample Data</p>
+                <p className="text-xs text-stone-500">Display demo/sample businesses on the platform.</p>
+              </div>
+              <button
+                onClick={() => updateField('show_sample_data', !settings?.show_sample_data)}
+                className={`w-12 h-6 rounded-full transition-colors ${settings?.show_sample_data ? 'bg-teal-500' : 'bg-stone-300'}`}
+              >
+                <span className={`block w-5 h-5 rounded-full bg-white shadow transition-transform ${settings?.show_sample_data ? 'translate-x-6' : 'translate-x-0.5'}`} />
+              </button>
+            </div>
+
+            {/* Brand Name */}
+            <div>
+              <label className="block text-sm font-medium text-stone-700 mb-1">Brand Name</label>
+              <input
+                type="text"
+                value={settings?.brand_name || ''}
+                onChange={(e) => updateField('brand_name', e.target.value)}
+                className="w-full px-3 py-2 border border-stone-300 rounded-lg text-sm"
+              />
+            </div>
+
+            {/* Place Name */}
+            <div>
+              <label className="block text-sm font-medium text-stone-700 mb-1">Place Name</label>
+              <input
+                type="text"
+                value={settings?.place_name || ''}
+                onChange={(e) => updateField('place_name', e.target.value)}
+                className="w-full px-3 py-2 border border-stone-300 rounded-lg text-sm"
+              />
+            </div>
+
+            {/* Currency */}
+            <div>
+              <label className="block text-sm font-medium text-stone-700 mb-1">Currency</label>
+              <input
+                type="text"
+                value={settings?.currency || ''}
+                onChange={(e) => updateField('currency', e.target.value)}
+                className="w-full px-3 py-2 border border-stone-300 rounded-lg text-sm"
+              />
+            </div>
+
+            {/* Legal Privacy EN */}
+            <div>
+              <label className="block text-sm font-medium text-stone-700 mb-1">Privacy Policy (EN)</label>
+              <textarea
+                value={settings?.legal_privacy_en || ''}
+                onChange={(e) => updateField('legal_privacy_en', e.target.value)}
+                rows={4}
+                className="w-full px-3 py-2 border border-stone-300 rounded-lg text-sm"
+              />
+            </div>
+
+            {/* Legal Privacy ES */}
+            <div>
+              <label className="block text-sm font-medium text-stone-700 mb-1">Privacy Policy (ES)</label>
+              <textarea
+                value={settings?.legal_privacy_es || ''}
+                onChange={(e) => updateField('legal_privacy_es', e.target.value)}
+                rows={4}
+                className="w-full px-3 py-2 border border-stone-300 rounded-lg text-sm"
+              />
+            </div>
+
+            {/* Legal Terms EN */}
+            <div>
+              <label className="block text-sm font-medium text-stone-700 mb-1">Terms of Service (EN)</label>
+              <textarea
+                value={settings?.legal_terms_en || ''}
+                onChange={(e) => updateField('legal_terms_en', e.target.value)}
+                rows={4}
+                className="w-full px-3 py-2 border border-stone-300 rounded-lg text-sm"
+              />
+            </div>
+
+            {/* Legal Terms ES */}
+            <div>
+              <label className="block text-sm font-medium text-stone-700 mb-1">Terms of Service (ES)</label>
+              <textarea
+                value={settings?.legal_terms_es || ''}
+                onChange={(e) => updateField('legal_terms_es', e.target.value)}
+                rows={4}
+                className="w-full px-3 py-2 border border-stone-300 rounded-lg text-sm"
+              />
+            </div>
+
+            {/* Save Button */}
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="px-6 py-2 bg-teal-500 text-white rounded-lg font-medium hover:bg-teal-600 disabled:opacity-50"
+            >
+              {saving ? (isEs ? 'Guardando...' : 'Saving...') : (isEs ? 'Guardar' : 'Save')}
+            </button>
+            {message && <p className="text-sm text-stone-600">{message}</p>}
+          </div>
+        ) : activeTab === 'reports' ? (
+          <ReportsTab />
+        ) : activeTab === 'users' ? (
+          <UsersTab />
+        ) : (
+          <BusinessesTab />
+        )}
       </div>
     </div>
   );
