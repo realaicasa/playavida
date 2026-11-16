@@ -27,11 +27,17 @@ export function jsonResponse(event: any, status: number, body: object): HTTPResp
 }
 
 export function setSessionCookie(event: any, sessionId: string, maxAgeSeconds: number): void {
-  const cookie = `session_id=${sessionId}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=${maxAgeSeconds}`;
+  const host = (typeof event?.req?.headers?.host === 'string' ? event.req.headers.host : '') ||
+    (typeof event?.headers?.get === 'function' ? event.headers.get('host') : '') || '';
+  const domainAttr = host.endsWith('playavida.org') ? ' Domain=.playavida.org;' : '';
+  const cookie = `session_id=${sessionId}; HttpOnly; Secure; SameSite=Lax;${domainAttr} Path=/; Max-Age=${maxAgeSeconds}`;
   setResponseHeader(event, 'Set-Cookie', cookie);
 }
 
 export function clearSessionCookie(event: any): void {
-  const cookie = 'session_id=; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=0';
+  const host = (typeof event?.req?.headers?.host === 'string' ? event.req.headers.host : '') ||
+    (typeof event?.headers?.get === 'function' ? event.headers.get('host') : '') || '';
+  const domainAttr = host.endsWith('playavida.org') ? ' Domain=.playavida.org;' : '';
+  const cookie = `session_id=; HttpOnly; Secure; SameSite=Lax;${domainAttr} Path=/; Max-Age=0`;
   setResponseHeader(event, 'Set-Cookie', cookie);
 }

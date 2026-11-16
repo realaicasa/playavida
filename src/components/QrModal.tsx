@@ -10,6 +10,7 @@ interface QrModalProps {
   reference: string;
   title: string;
   language: Language;
+  canonicalUrl?: string;
 }
 
 export const QrModal: React.FC<QrModalProps> = ({
@@ -25,7 +26,7 @@ export const QrModal: React.FC<QrModalProps> = ({
   const isEs = language === 'es';
   const [copied, setCopied] = useState(false);
   // Construct a truly unique URL structure that routes based on the reference type
-  const targetUrl = `${window.location.origin}/entity/${reference}`;
+  const targetUrl = canonicalUrl || `${window.location.origin}/entity/${reference}`;
 
   const handleCopy = () => {
     navigator.clipboard?.writeText(targetUrl);

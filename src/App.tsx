@@ -172,19 +172,48 @@ export default function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
+  // Read URL params on mount to open items directly
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const groupRef = params.get('group');
+    const eventRef = params.get('event');
+    const businessRef = params.get('business');
+    if (groupRef) handleNavigateToRef(groupRef);
+    else if (eventRef) handleNavigateToRef(eventRef);
+    else if (businessRef) handleNavigateToRef(businessRef);
+  }, []);
+
   // Check for admin route
   useEffect(() => {
     const checkAdmin = () => {
-      if (window.location.hash === '#admin' && isSuperadmin) {
-        setIsAdminOpen(true);
+      const isAdminPath = window.location.pathname === '/admin' || window.location.hash === '#admin';
+      if (isAdminPath) {
+        if (isSuperadmin) {
+          setIsAdminOpen(true);
+        } else if (!currentUser && !isSessionLoading) {
+          setIsAuthModalOpen(true);
+        }
       }
     };
     checkAdmin();
     window.addEventListener('hashchange', checkAdmin);
-    return () => window.removeEventListener('hashchange', checkAdmin);
-  }, [isSuperadmin]);
+    window.addEventListener('popstate', checkAdmin);
+    return () => {
+      window.removeEventListener('hashchange', checkAdmin);
+      window.removeEventListener('popstate', checkAdmin);
+    };
+  }, [isSuperadmin, currentUser, isSessionLoading]);
 
-  // Validate session on mount
+  // Client-side Launch-Mode Gate fallback
+  useEffect(() => {
+    if (isSessionLoading) return;
+    if (!siteSettings.launch_mode_enabled) return;
+    if (window.location.pathname === '/admin') return;
+    if (currentUser && (isSuperadmin || (currentUser as any).is_founding_member)) return;
+    if (!currentUser) {
+      window.location.replace(siteSettings.waitlist_url);
+    }
+  }, [siteSettings, currentUser, isSessionLoading, isSuperadmin]);
   useEffect(() => {
     const validateSession = async () => {
       try {

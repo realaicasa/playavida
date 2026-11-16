@@ -1,6 +1,6 @@
 import { getMethod, readBody, setResponseStatus, setResponseHeader } from 'h3';
 import { getTeableClient } from '../../../lib/teable.js';
-import { jsonResponse } from '../../../lib/node-helpers.js';
+import { jsonResponse, setSessionCookie } from '../../../lib/node-helpers.js';
 import crypto from 'crypto';
 
 const OTP_TABLE_ID = process.env.TEABLE_OTP_TABLE_ID;
@@ -200,8 +200,7 @@ export default async function handler(event: any): Promise<any> {
   }
 
   // Set session cookie
-  const cookie = `session_id=${sessionId}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=${30 * 24 * 60 * 60}`;
-  setResponseHeader(event, 'Set-Cookie', cookie);
+  setSessionCookie(event, sessionId, 30 * 24 * 60 * 60);
 
   return jsonResponse(event, 200, {
     authenticated: true,
