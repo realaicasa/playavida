@@ -1,5 +1,6 @@
 import { getMethod, readBody, setResponseStatus, setResponseHeader } from 'h3';
 import { getTeableClient } from '../../../lib/teable.js';
+import { jsonResponse } from '../../../lib/node-helpers.js';
 import crypto from 'crypto';
 
 const OTP_TABLE_ID = process.env.TEABLE_OTP_TABLE_ID;
@@ -22,33 +23,25 @@ export default async function handler(event: any): Promise<any> {
   const method = getMethod(event);
 
   if (method !== 'POST') {
-    setResponseHeader(event, 'Content-Type', 'application/json; charset=utf-8');
-    setResponseStatus(event, 405);
-    return { ok: false, code: 'METHOD_NOT_ALLOWED' };
+    return jsonResponse(event, 405, { ok: false, code: 'METHOD_NOT_ALLOWED' });
   }
 
   let body: any;
   try {
     body = await readBody(event);
   } catch (e: any) {
-    setResponseHeader(event, 'Content-Type', 'application/json; charset=utf-8');
-    setResponseStatus(event, 400);
-    return { ok: false, code: 'INVALID_JSON' };
+    return jsonResponse(event, 400, { ok: false, code: 'INVALID_JSON' });
   }
 
   const email = String(body.email ?? '').toLowerCase().trim();
   const code = String(body.code ?? '').trim();
 
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    setResponseHeader(event, 'Content-Type', 'application/json; charset=utf-8');
-    setResponseStatus(event, 400);
-    return { ok: false, code: 'INVALID_EMAIL' };
+    return jsonResponse(event, 400, { ok: false, code: 'INVALID_EMAIL' });
   }
 
   if (!code || !/^\d{6}$/.test(code)) {
-    setResponseHeader(event, 'Content-Type', 'application/json; charset=utf-8');
-    setResponseStatus(event, 400);
-    return { ok: false, code: 'INVALID_CODE' };
+    return jsonResponse(event, 400, { ok: false, code: 'INVALID_CODE' });
   }
 
   let teable;
@@ -56,9 +49,7 @@ export default async function handler(event: any): Promise<any> {
     teable = getTeableClient();
   } catch (e: any) {
     console.error('Teable client init failed:', e?.message || e);
-    setResponseHeader(event, 'Content-Type', 'application/json; charset=utf-8');
-    setResponseStatus(event, 500);
-    return { ok: false, code: 'TEABLE_CONFIG_ERROR', error: e?.message || 'Teable configuration error' };
+    return jsonResponse(event, 500, { ok: false, code: 'TEABLE_CONFIG_ERROR', error: e?.message || 'Teable configuration error' });
   }
 
   const emailHash = getEmailHash(email);
@@ -79,34 +70,26 @@ export default async function handler(event: any): Promise<any> {
     });
 
     if (otpRecords.records.length === 0) {
-      setResponseHeader(event, 'Content-Type', 'application/json; charset=utf-8');
-      setResponseStatus(event, 400);
-      return { ok: false, code: 'INVALID_CODE' };
+      return jsonResponse(event, 400, { ok: false, code: 'INVALID_CODE' });
     }
 
     otpRecord = otpRecords.records[0];
   } catch (e: any) {
     console.error('Failed to fetch OTP:', e?.message || e);
-    setResponseHeader(event, 'Content-Type', 'application/json; charset=utf-8');
-    setResponseStatus(event, 500);
-    return { ok: false, code: 'OTP_FETCH_FAILED', error: e?.message || 'Unknown error' };
+    return jsonResponse(event, 500, { ok: false, code: 'OTP_FETCH_FAILED', error: e?.message || 'Unknown error' });
   }
 
   const otpFields = otpRecord.fields as any;
 
   // Check attempts
   if ((otpFields.attempt_count || 0) >= 5) {
-    setResponseHeader(event, 'Content-Type', 'application/json; charset=utf-8');
-    setResponseStatus(event, 429);
-    return { ok: false, code: 'RATE_LIMITED' };
+    return jsonResponse(event, 429, { ok: false, code: 'RATE_LIMITED' });
   }
 
   // Verify OTP
   const storedHash = otpRecord.fields.code_hash as string;
   if (!storedHash) {
-    setResponseHeader(event, 'Content-Type', 'application/json; charset=utf-8');
-    setResponseStatus(event, 400);
-    return { ok: false, code: 'INVALID_CODE' };
+    return jsonResponse(event, 400, { ok: false, code: 'INVALID_CODE' });
   }
 
   const [salt, hash] = storedHash.split(':');
@@ -118,9 +101,7 @@ export default async function handler(event: any): Promise<any> {
       attempt_count: (otpFields.attempt_count || 0) + 1,
     });
 
-    setResponseHeader(event, 'Content-Type', 'application/json; charset=utf-8');
-    setResponseStatus(event, 400);
-    return { ok: false, code: 'INVALID_CODE' };
+    return jsonResponse(event, 400, { ok: false, code: 'INVALID_CODE' });
   }
 
   // Mark OTP as consumed
@@ -149,9 +130,7 @@ export default async function handler(event: any): Promise<any> {
     }
   } catch (e: any) {
     console.error('Failed to find/create user:', e?.message || e);
-    setResponseHeader(event, 'Content-Type', 'application/json; charset=utf-8');
-    setResponseStatus(event, 500);
-    return { ok: false, code: 'USER_CREATE_FAILED', error: e?.message || 'Unknown error' };
+    return jsonResponse(event, 500, { ok: false, code: 'USER_CREATE_FAILED', error: e?.message || 'Unknown error' });
   }
 
   const userId = userRecord.id;
@@ -203,9 +182,7 @@ export default async function handler(event: any): Promise<any> {
     });
   } catch (e: any) {
     console.error('Failed to create session:', e?.message || e);
-    setResponseHeader(event, 'Content-Type', 'application/json; charset=utf-8');
-    setResponseStatus(event, 500);
-    return { ok: false, code: 'SESSION_CREATE_FAILED', error: e?.message || 'Unknown error' };
+    return jsonResponse(event, 500, { ok: false, code: 'SESSION_CREATE_FAILED', error: e?.message || 'Unknown error' });
   }
 
   // Get user public reference
@@ -225,9 +202,8 @@ export default async function handler(event: any): Promise<any> {
   // Set session cookie
   const cookie = `session_id=${sessionId}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=${30 * 24 * 60 * 60}`;
   setResponseHeader(event, 'Set-Cookie', cookie);
-  setResponseHeader(event, 'Content-Type', 'application/json; charset=utf-8');
-  setResponseStatus(event, 200);
-  return {
+
+  return jsonResponse(event, 200, {
     authenticated: true,
     userId,
     public_reference: publicReference,
@@ -235,5 +211,5 @@ export default async function handler(event: any): Promise<any> {
     businessOwnerships: [],
     staffAssignments: [],
     exp: Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60,
-  };
+  });
 }
