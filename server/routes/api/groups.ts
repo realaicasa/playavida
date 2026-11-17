@@ -67,12 +67,27 @@ export default async function handler(event: any): Promise<any> {
 
     try {
       const teable = getTeableClient();
+
+      // Check if user is a founding member
+      let isFoundingMember = false;
+      try {
+        const userRecords = await teable.listRecords(process.env.TEABLE_TABLE_USERS || 'tblB6Wiwy4KOx3Tjgui', {
+          filter: { fieldId: 'user_id', operator: 'is', value: currentUser.user?.user_id || '' },
+          maxRecords: 1,
+        });
+        if (userRecords.records.length > 0) {
+          isFoundingMember = userRecords.records[0].fields.is_founding_member === true;
+        }
+      } catch (e) {
+        console.warn('Failed to check founding member status:', e);
+      }
+
       const record = await teable.createRecord(GROUPS_TABLE_ID, {
         group_name: body.group_name || '',
         owner_id: currentUser.user?.user_id || '',
         description: body.description || '',
         category: body.category || '',
-        is_featured: false,
+        is_featured: isFoundingMember, // Founding members get featured
         is_demo: body.is_demo === true,
         is_hidden: false,
         unique_ref: body.unique_ref || `GRP-${Date.now()}`,
