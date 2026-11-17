@@ -181,6 +181,205 @@ const BusinessesTab: React.FC = () => {
   );
 };
 
+// --- Community Tab ---
+const CommunityTab: React.FC = () => {
+  const [items, setItems] = useState<any[]>([]);
+  const [filter, setFilter] = useState('all');
+  const [loading, setLoading] = useState(true);
+
+  const fetchItems = (f?: string) => {
+    const url = f ? `/api/admin/community?filter=${f}` : '/api/admin/community';
+    fetch(url).then((r) => r.json()).then((data) => { setItems(data.items || []); setLoading(false); });
+  };
+
+  useEffect(() => { fetchItems(filter); }, [filter]);
+
+  const handleAction = async (type: string, id: string, action: string, value?: any) => {
+    const body: any = { action };
+    if (action === 'toggle_featured') body.is_featured = value;
+    if (action === 'toggle_hidden') body.is_hidden = value;
+    if (action === 'edit_date') body.event_date = value;
+    await fetch(`/api/admin/community/${type}/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    fetchItems(filter);
+  };
+
+  if (loading) return <p className="text-stone-500">Loading community items...</p>;
+
+  return (
+    <div className="space-y-4">
+      <h3 className="text-lg font-semibold text-stone-800">Groups & Events Management</h3>
+      <div className="flex gap-2 flex-wrap">
+        {['all', 'groups', 'events', 'featured', 'hidden'].map((f) => (
+          <button key={f} onClick={() => setFilter(f)} className={`px-3 py-1 text-xs rounded-full ${filter === f ? 'bg-teal-500 text-white' : 'bg-stone-200 text-stone-700'}`}>{f}</button>
+        ))}
+      </div>
+      <div className="space-y-2">
+        {items.map((item: any) => (
+          <div key={item.id} className="p-3 border border-stone-200 rounded-lg text-sm flex items-center justify-between flex-wrap gap-2">
+            <div>
+              <span className="font-medium">{item.title}</span>
+              <span className="text-stone-500 ml-2">({item.type})</span>
+              {item.is_featured && <span className="ml-2 px-2 py-0.5 bg-yellow-100 text-yellow-700 rounded text-xs">Featured</span>}
+              {item.is_hidden && <span className="ml-2 px-2 py-0.5 bg-red-100 text-red-700 rounded text-xs">Hidden</span>}
+              {item.is_demo && <span className="ml-2 px-2 py-0.5 bg-gray-100 text-gray-700 rounded text-xs">Demo</span>}
+              {item.event_date && <span className="ml-2 text-xs text-stone-400">{item.event_date}</span>}
+            </div>
+            <div className="flex gap-2">
+              <button onClick={() => handleAction(item.type, item.id, 'toggle_featured', !item.is_featured)} className="px-2 py-1 text-xs bg-stone-200 rounded hover:bg-stone-300">{item.is_featured ? 'Unfeature' : 'Feature'}</button>
+              <button onClick={() => handleAction(item.type, item.id, 'toggle_hidden', !item.is_hidden)} className="px-2 py-1 text-xs bg-stone-200 rounded hover:bg-stone-300">{item.is_hidden ? 'Restore' : 'Hide'}</button>
+              <button onClick={() => { if (confirm('Type DELETE to purge')) handleAction(item.type, item.id, 'purge'); }} className="px-2 py-1 text-xs bg-red-100 text-red-700 rounded hover:bg-red-200">Purge</button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+// --- Revenue Tab ---
+const RevenueTab: React.FC = () => {
+  const [data, setData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [sessionId, setSessionId] = useState('');
+  const [replayResult, setReplayResult] = useState('');
+
+  useEffect(() => {
+    fetch('/api/admin/subscriptions').then((r) => r.json()).then((d) => { setData(d); setLoading(false); }).catch(() => setLoading(false));
+  }, []);
+
+  const handleReplay = async () => {
+    if (!sessionId) return;
+    const res = await fetch('/api/admin/stripe/replay', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ session_id: sessionId }) });
+    const d = await res.json();
+    setReplayResult(d.code || d.message || 'Done');
+  };
+
+  if (loading) return <p className="text-stone-500">Loading revenue data...</p>;
+
+  return (
+    <div className="space-y-6">
+      <h3 className="text-lg font-semibold text-stone-800">Revenue, Subscriptions & Stripe Replay</h3>
+
+      {/* Replay input */}
+      <div className="p-4 bg-white rounded-xl border border-stone-200">
+        <h4 className="font-medium text-stone-800 mb-2">Replay / Reconcile Stripe Session</h4>
+        <div className="flex gap-2">
+          <input type="text" placeholder="cs_..." value={sessionId} onChange={(e) => setSessionId(e.target.value)} className="flex-1 px-3 py-2 border border-stone-300 rounded-lg text-sm" />
+          <button onClick={handleReplay} className="px-4 py-2 bg-teal-500 text-white rounded-lg text-sm">Replay</button>
+        </div>
+        {replayResult && <p className="text-sm mt-2 text-stone-600">{replayResult}</p>}
+      </div>
+
+      {/* KPI Cards */}
+      {data?.kpis && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="p-4 bg-white rounded-xl border border-stone-200">
+            <p className="text-xs text-stone-500">Total Collected (MXN)</p>
+            <p className="text-xl font-bold text-stone-800">{data.kpis.total_collected_mxn}</p>
+          </div>
+          <div className="p-4 bg-white rounded-xl border border-stone-200">
+            <p className="text-xs text-stone-500">Active Pro</p>
+            <p className="text-xl font-bold text-stone-800">{data.kpis.active_pro}</p>
+          </div>
+          <div className="p-4 bg-white rounded-xl border border-stone-200">
+            <p className="text-xs text-stone-500">Active Sponsors</p>
+            <p className="text-xl font-bold text-stone-800">{data.kpis.active_sponsors}</p>
+          </div>
+          <div className="p-4 bg-white rounded-xl border border-stone-200">
+            <p className="text-xs text-stone-500">Expiring in 7 Days</p>
+            <p className="text-xl font-bold text-red-600">{data.kpis.expiring_soon_count}</p>
+          </div>
+        </div>
+      )}
+
+      {/* Expiring soon table */}
+      {data?.expiring_soon?.length > 0 && (
+        <div>
+          <h4 className="font-medium text-stone-800 mb-2">Expiring Soon</h4>
+          <div className="space-y-2">
+            {data.expiring_soon.map((s: any) => (
+              <div key={s.id} className="p-2 border border-stone-200 rounded text-sm">
+                {s.business_id} — expires {s.expires_at}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// --- Audit & Loyalty Tab ---
+const AuditLoyaltyTab: React.FC = () => {
+  const [logs, setLogs] = useState<any[]>([]);
+  const [loyalty, setLoyalty] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    Promise.all([
+      fetch('/api/admin/audit-logs').then((r) => r.json()),
+      fetch('/api/admin/loyalty').then((r) => r.json()),
+    ]).then(([auditData, loyaltyData]) => {
+      setLogs(auditData.logs || []);
+      setLoyalty(loyaltyData);
+      setLoading(false);
+    }).catch(() => setLoading(false));
+  }, []);
+
+  if (loading) return <p className="text-stone-500">Loading audit & loyalty data...</p>;
+
+  return (
+    <div className="space-y-6">
+      <h3 className="text-lg font-semibold text-stone-800">Audit Logs & Loyalty Monitor</h3>
+
+      {/* Loyalty Programs */}
+      {loyalty?.programs?.length > 0 && (
+        <div>
+          <h4 className="font-medium text-stone-800 mb-2">Loyalty Programs</h4>
+          <div className="space-y-2">
+            {loyalty.programs.map((p: any) => (
+              <div key={p.id} className="p-3 border border-stone-200 rounded-lg text-sm flex items-center justify-between">
+                <div>
+                  <span className="font-medium">{p.name}</span>
+                  {p.anomaly && <span className="ml-2 px-2 py-0.5 bg-red-100 text-red-700 rounded text-xs">Anomaly</span>}
+                </div>
+                <button
+                  onClick={async () => {
+                    await fetch('/api/admin/loyalty', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ program_id: p.id, is_active: !p.is_active }) });
+                    fetch('/api/admin/loyalty').then((r) => r.json()).then(setLoyalty);
+                  }}
+                  className={`px-2 py-1 text-xs rounded ${p.is_active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}
+                >
+                  {p.is_active ? 'Active' : 'Paused'}
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Audit Logs */}
+      <div>
+        <h4 className="font-medium text-stone-800 mb-2">Audit Logs (newest first)</h4>
+        {logs.length === 0 ? (
+          <p className="text-sm text-stone-500">No audit logs.</p>
+        ) : (
+          <div className="space-y-2">
+            {logs.slice(0, 50).map((log: any) => (
+              <div key={log.id} className="p-2 border border-stone-200 rounded text-xs">
+                <span className="text-stone-400">{log.created_at}</span>
+                <span className="ml-2 font-medium">{log.actor_email}</span>
+                <span className="ml-2 px-1.5 py-0.5 bg-stone-100 rounded">{log.action}</span>
+                <span className="ml-2 text-stone-500">{log.target_type}:{log.target_id}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
 interface AdminDashboardProps {
   language: Language;
   onClose: () => void;
@@ -209,6 +408,9 @@ const TABS = [
   { id: 'reports', label: 'Reports Queue' },
   { id: 'users', label: 'Users & Founding' },
   { id: 'businesses', label: 'Businesses & Pro' },
+  { id: 'community', label: 'Groups & Events' },
+  { id: 'revenue', label: 'Revenue & Stripe' },
+  { id: 'audit', label: 'Audit & Loyalty' },
 ];
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({ language, onClose }) => {
@@ -547,8 +749,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ language, onClos
           <ReportsTab />
         ) : activeTab === 'users' ? (
           <UsersTab />
-        ) : (
+        ) : activeTab === 'businesses' ? (
           <BusinessesTab />
+        ) : activeTab === 'community' ? (
+          <CommunityTab />
+        ) : activeTab === 'revenue' ? (
+          <RevenueTab />
+        ) : (
+          <AuditLoyaltyTab />
         )}
       </div>
     </div>
