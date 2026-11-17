@@ -97,6 +97,88 @@ export default async function handler(event: any): Promise<any> {
       }
     }
 
+    if (body.action === 'transfer_ownership') {
+      const businessId = body.business_id;
+      const newOwnerEmail = String(body.new_owner_email || '').toLowerCase().trim();
+      if (!businessId || !newOwnerEmail) {
+        setResponseHeader(event, 'Content-Type', 'application/json; charset=utf-8');
+        setResponseStatus(event, 400);
+        return { ok: false, code: 'INVALID_PARAMS' };
+      }
+      try {
+        // Find user by email
+        const userRecords = await teable.listRecords(process.env.TEABLE_TABLE_USERS || 'tblB6Wiwy4KOx3Tjgui', {
+          filter: { fieldId: 'email', operator: 'is', value: newOwnerEmail },
+          maxRecords: 1,
+        });
+        if (userRecords.records.length === 0) {
+          setResponseHeader(event, 'Content-Type', 'application/json; charset=utf-8');
+          setResponseStatus(event, 404);
+          return { ok: false, code: 'USER_NOT_FOUND' };
+        }
+        const newOwnerId = userRecords.records[0].fields.user_id || userRecords.records[0].id;
+
+        await teable.updateRecord(BUSINESSES_TABLE_ID, businessId, {
+          created_by_user_id: newOwnerId,
+        });
+
+        await logAuditEvent({
+          actor_email: currentUser.user?.email || 'admin',
+          action: 'transfer_ownership',
+          target_type: 'business',
+          target_id: businessId,
+          metadata: { new_owner_email: newOwnerEmail, new_owner_id: newOwnerId, audit_reason: body.audit_reason },
+        });
+
+        setResponseHeader(event, 'Content-Type', 'application/json; charset=utf-8');
+        setResponseStatus(event, 200);
+        return { ok: true };
+      } catch (e: any) {
+        console.error('Failed to transfer ownership:', e?.message || e);
+        setResponseHeader(event, 'Content-Type', 'application/json; charset=utf-8');
+        setResponseStatus(event, 500);
+        return { ok: false, code: 'BUSINESS_UPDATE_FAILED', error: e?.message || 'Unknown error' };
+      }
+    }
+
+    if (body.action === 'tier_override') {
+      const businessId = body.business_id;
+      const updates: Record<string, unknown> = {};
+      if (body.is_pro !== undefined) updates.is_pro = body.is_pro === true;
+      if (body.is_sponsor !== undefined) updates.is_sponsor = body.is_sponsor === true;
+      if (body.is_featured !== undefined) updates.is_featured = body.is_featured === true;
+      if (body.pro_expires_at) updates.pro_expires_at = body.pro_expires_at;
+      if (body.sponsor_expires_at) updates.sponsor_expires_at = body.sponsor_expires_at;
+      if (body.featured_expires_at) updates.featured_expires_at = body.featured_expires_at;
+
+      if (!body.audit_reason) {
+        setResponseHeader(event, 'Content-Type', 'application/json; charset=utf-8');
+        setResponseStatus(event, 400);
+        return { ok: false, code: 'AUDIT_REASON_REQUIRED' };
+      }
+
+      try {
+        await teable.updateRecord(BUSINESSES_TABLE_ID, businessId, updates);
+
+        await logAuditEvent({
+          actor_email: currentUser.user?.email || 'admin',
+          action: 'tier_override',
+          target_type: 'business',
+          target_id: businessId,
+          metadata: { updates, audit_reason: body.audit_reason },
+        });
+
+        setResponseHeader(event, 'Content-Type', 'application/json; charset=utf-8');
+        setResponseStatus(event, 200);
+        return { ok: true };
+      } catch (e: any) {
+        console.error('Failed to override tier:', e?.message || e);
+        setResponseHeader(event, 'Content-Type', 'application/json; charset=utf-8');
+        setResponseStatus(event, 500);
+        return { ok: false, code: 'BUSINESS_UPDATE_FAILED', error: e?.message || 'Unknown error' };
+      }
+    }
+
     setResponseHeader(event, 'Content-Type', 'application/json; charset=utf-8');
     setResponseStatus(event, 400);
     return { ok: false, code: 'INVALID_ACTION' };

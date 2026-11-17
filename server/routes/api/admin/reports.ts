@@ -34,29 +34,34 @@ export default async function handler(event: any): Promise<any> {
     // Compute repeat reporter flags
     const reporterCounts: Record<string, number> = {};
     const ipCounts: Record<string, number> = {};
+    const targetStrikeCounts: Record<string, number> = {};
     for (const r of records.records) {
       const f = r.fields as any;
       const reporterId = f.reporter_id || '';
       const ipHash = f.reporter_ip_hash || '';
+      const targetId = f.target_id || '';
       reporterCounts[reporterId] = (reporterCounts[reporterId] || 0) + 1;
       if (ipHash) ipCounts[ipHash] = (ipCounts[ipHash] || 0) + 1;
+      targetStrikeCounts[targetId] = (targetStrikeCounts[targetId] || 0) + 1;
     }
 
     const reports = records.records.map((r) => {
       const f = r.fields as any;
       const reporterId = f.reporter_id || '';
       const ipHash = f.reporter_ip_hash || '';
+      const targetId = f.target_id || '';
       return {
         id: r.id,
         reporter_id: reporterId,
         reporter_ip_hash: ipHash,
         target_type: f.target_type || '',
-        target_id: f.target_id || '',
+        target_id: targetId,
         reason: f.reason || '',
         status: f.status || 'pending',
         created_at: f.created_at || '',
         repeat_reporter: reporterCounts[reporterId] > 1,
         same_ip: ipHash ? ipCounts[ipHash] > 1 : false,
+        strike_count: targetStrikeCounts[targetId] || 1,
       };
     });
 

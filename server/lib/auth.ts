@@ -147,6 +147,7 @@ export async function getCurrentUser(event: any): Promise<{
   user?: any;
   isSuperadmin: boolean;
   isFoundingMember: boolean;
+  isSuspended: boolean;
 }> {
   const cookieHeader = (event.req?.headers?.cookie) || (typeof event.headers?.get === 'function' ? event.headers.get('cookie') : '') || '';
   // h3 v2: use getRequestHeader if available
@@ -162,12 +163,12 @@ export async function getCurrentUser(event: any): Promise<{
   const sessionId = sessionMatch?.[1];
 
   if (!sessionId) {
-    return { authenticated: false, isSuperadmin: false, isFoundingMember: false };
+    return { authenticated: false, isSuperadmin: false, isFoundingMember: false, isSuspended: false };
   }
 
   const result = await validateSession(sessionId);
   if (!result.valid || !result.context) {
-    return { authenticated: false, isSuperadmin: false, isFoundingMember: false };
+    return { authenticated: false, isSuperadmin: false, isFoundingMember: false, isSuspended: false };
   }
 
   const USERS_TABLE_ID = process.env.TEABLE_TABLE_USERS || 'tblB6Wiwy4KOx3Tjgui';
@@ -221,6 +222,13 @@ export async function getCurrentUser(event: any): Promise<{
     }
   }
 
+  const isSuspended = user?.account_status === 'suspended' || user?.is_suspended === true;
+
+  // If suspended, treat as unauthenticated
+  if (isSuspended) {
+    return { authenticated: false, isSuperadmin: false, isFoundingMember: false, isSuspended: true };
+  }
+
   const superadminEmails = (process.env.SUPERADMIN_EMAILS || '').split(',').map((e: string) => e.trim().toLowerCase());
   const isSuperadmin = superadminEmails.includes(userEmail.toLowerCase());
 
@@ -229,5 +237,6 @@ export async function getCurrentUser(event: any): Promise<{
     user: user ? { ...user, hasLifetimePro, hasFeaturedBusinesses, hasFeaturedGroups, hasFeaturedEvents } : null,
     isSuperadmin,
     isFoundingMember,
+    isSuspended: false,
   };
 }

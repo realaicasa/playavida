@@ -150,7 +150,50 @@ export default async function handler(event: any): Promise<any> {
       }
     }
 
-    // Toggle founding member
+    // Toggle demo
+    if (body.action === 'toggle_demo') {
+      const userId = body.user_id;
+      const demo = body.demo === true;
+      // Safeguard: never mark miketest@dynamicmike.com as demo
+      try {
+        const userRecords = await teable.listRecords(USERS_TABLE_ID, {
+          filter: { fieldId: 'user_id', operator: 'is', value: userId },
+          maxRecords: 1,
+        });
+        if (userRecords.records.length > 0) {
+          const email = (userRecords.records[0].fields.email as string || '').toLowerCase().trim();
+          if (email === 'miketest@dynamicmike.com' && demo) {
+            setResponseHeader(event, 'Content-Type', 'application/json; charset=utf-8');
+            setResponseStatus(event, 400);
+            return { ok: false, code: 'SAFEGUARD', message: 'miketest@dynamicmike.com cannot be marked as demo' };
+          }
+        }
+      } catch (e) {
+        console.warn('Failed to check user email:', e);
+      }
+
+      try {
+        await teable.updateRecord(USERS_TABLE_ID, userId, {
+          is_demo_account: demo,
+        });
+
+        await logAuditEvent({
+          actor_email: currentUser.user?.email || 'admin',
+          action: demo ? 'mark_demo' : 'unmark_demo',
+          target_type: 'user',
+          target_id: userId,
+        });
+
+        setResponseHeader(event, 'Content-Type', 'application/json; charset=utf-8');
+        setResponseStatus(event, 200);
+        return { ok: true };
+      } catch (e: any) {
+        console.error('Failed to toggle demo:', e?.message || e);
+        setResponseHeader(event, 'Content-Type', 'application/json; charset=utf-8');
+        setResponseStatus(event, 500);
+        return { ok: false, code: 'USER_UPDATE_FAILED', error: e?.message || 'Unknown error' };
+      }
+    }
     if (body.action === 'toggle_founding') {
       const userId = body.user_id;
       const founding = body.founding === true;

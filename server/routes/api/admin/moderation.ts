@@ -85,6 +85,77 @@ export default async function handler(event: any): Promise<any> {
         target_type: targetType,
         target_id: targetId,
       });
+    } else if (action === 'bulk_dismiss') {
+      // Clear all pending reports for this target
+      try {
+        const reportRecords = await teable.listRecords(process.env.TEABLE_TABLE_REPORTS || 'tblMXJBJkxwtugJKI9o', {
+          filter: {
+            conjunction: 'AND',
+            conditions: [
+              { fieldId: 'target_type', operator: 'is', value: targetType },
+              { fieldId: 'target_id', operator: 'is', value: targetId },
+            ],
+          },
+          maxRecords: 100,
+        });
+
+        for (const report of reportRecords.records) {
+          await teable.updateRecord(process.env.TEABLE_TABLE_REPORTS || 'tblMXJBJkxwtugJKI9o', report.id as string, {
+            status: 'dismissed',
+          });
+        }
+
+        await logAuditEvent({
+          actor_email: currentUser.user?.email || 'admin',
+          action: 'bulk_dismiss_reports',
+          target_type: targetType,
+          target_id: targetId,
+          metadata: { dismissed_count: reportRecords.records.length },
+        });
+
+        setResponseHeader(event, 'Content-Type', 'application/json; charset=utf-8');
+        setResponseStatus(event, 200);
+        return { ok: true, dismissed: reportRecords.records.length };
+      } catch (e: any) {
+        console.error('Failed to bulk dismiss:', e?.message || e);
+        setResponseHeader(event, 'Content-Type', 'application/json; charset=utf-8');
+        setResponseStatus(event, 500);
+        return { ok: false, code: 'MODERATION_FAILED', error: e?.message || 'Unknown error' };
+      }
+    } else if (action === 'block_reporter') {
+      const reporterId = body.reporter_id;
+      const ipHash = body.reporter_ip_hash;
+      try {
+        // Mark reporter as untrusted in Users table (if user_id exists)
+        if (reporterId) {
+          const userRecords = await teable.listRecords(process.env.TEABLE_TABLE_USERS || 'tblB6Wiwy4KOx3Tjgui', {
+            filter: { fieldId: 'user_id', operator: 'is', value: reporterId },
+            maxRecords: 1,
+          });
+          if (userRecords.records.length > 0) {
+            await teable.updateRecord(process.env.TEABLE_TABLE_USERS || 'tblB6Wiwy4KOx3Tjgui', userRecords.records[0].id as string, {
+              account_status: 'blocked_reporting',
+            });
+          }
+        }
+
+        await logAuditEvent({
+          actor_email: currentUser.user?.email || 'admin',
+          action: 'block_reporter',
+          target_type: 'reporter',
+          target_id: reporterId || ipHash || 'unknown',
+          metadata: { reporter_id: reporterId, ip_hash: ipHash },
+        });
+
+        setResponseHeader(event, 'Content-Type', 'application/json; charset=utf-8');
+        setResponseStatus(event, 200);
+        return { ok: true };
+      } catch (e: any) {
+        console.error('Failed to block reporter:', e?.message || e);
+        setResponseHeader(event, 'Content-Type', 'application/json; charset=utf-8');
+        setResponseStatus(event, 500);
+        return { ok: false, code: 'MODERATION_FAILED', error: e?.message || 'Unknown error' };
+      }
     } else if (action === 'purge') {
       if (body.confirmation !== 'DELETE') {
         setResponseHeader(event, 'Content-Type', 'application/json; charset=utf-8');
