@@ -14,12 +14,16 @@ const ReportsTab: React.FC = () => {
       .catch(() => setLoading(false));
   }, []);
 
-  const handleAction = async (action: string, targetType: string, targetId: string) => {
+  const handleAction = async (action: string, targetType: string, targetId: string, reporterId?: string, ipHash?: string) => {
     const body: any = { action, target_type: targetType, target_id: targetId };
     if (action === 'purge') {
       const confirm = prompt('Type DELETE to confirm permanent purge:');
       if (confirm !== 'DELETE') return;
       body.confirmation = 'DELETE';
+    }
+    if (action === 'block_reporter') {
+      body.reporter_id = reporterId;
+      body.reporter_ip_hash = ipHash;
     }
     await fetch('/api/admin/moderation', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
     // Refresh
@@ -42,10 +46,12 @@ const ReportsTab: React.FC = () => {
                 {r.repeat_reporter && <span className="px-2 py-0.5 bg-red-100 text-red-700 rounded text-xs">Repeat Reporter</span>}
                 {r.same_ip && <span className="px-2 py-0.5 bg-orange-100 text-orange-700 rounded text-xs">Same IP</span>}
               </div>
-              <p className="text-stone-500 mt-1">Reason: {r.reason} | Reporter: {r.reporter_id} | {r.created_at}</p>
+              <p className="text-stone-500 mt-1">Reason: {r.reason} | Reporter: {r.reporter_id} | Strikes: {r.strike_count} | {r.created_at}</p>
               <div className="flex gap-2 mt-2">
                 <button onClick={() => handleAction('hide', r.target_type, r.target_id)} className="px-2 py-1 text-xs bg-stone-200 rounded hover:bg-stone-300">Hide</button>
                 <button onClick={() => handleAction('restore', r.target_type, r.target_id)} className="px-2 py-1 text-xs bg-green-100 text-green-700 rounded hover:bg-green-200">Restore</button>
+                <button onClick={() => handleAction('bulk_dismiss', r.target_type, r.target_id)} className="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200">Bulk Dismiss</button>
+                <button onClick={() => handleAction('block_reporter', r.target_type, r.target_id, r.reporter_id, r.reporter_ip_hash)} className="px-2 py-1 text-xs bg-orange-100 text-orange-700 rounded hover:bg-orange-200">Block Reporter</button>
                 <button onClick={() => handleAction('purge', r.target_type, r.target_id)} className="px-2 py-1 text-xs bg-red-100 text-red-700 rounded hover:bg-red-200">Purge</button>
               </div>
             </div>
@@ -74,6 +80,7 @@ const UsersTab: React.FC = () => {
     const body: any = { action, user_id: userId };
     if (action === 'toggle_suspend') body.suspend = value;
     if (action === 'toggle_founding') body.founding = value;
+    if (action === 'toggle_demo') body.demo = value;
     await fetch('/api/admin/users', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
     fetchUsers(search);
   };
@@ -120,6 +127,7 @@ const UsersTab: React.FC = () => {
             <div className="flex gap-2">
               <button onClick={() => handleAction('toggle_suspend', u.id, !u.is_suspended)} className="px-2 py-1 text-xs bg-stone-200 rounded hover:bg-stone-300">{u.is_suspended ? 'Restore' : 'Suspend'}</button>
               <button onClick={() => handleAction('toggle_founding', u.id, !u.is_founding_member)} className="px-2 py-1 text-xs bg-teal-100 text-teal-700 rounded hover:bg-teal-200">{u.is_founding_member ? 'Remove Founding' : 'Make Founding'}</button>
+              <button onClick={() => handleAction('toggle_demo', u.id, !u.is_demo)} className="px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded hover:bg-gray-200">{u.is_demo ? 'Unmark Demo' : 'Mark Demo'}</button>
             </div>
           </div>
         ))}
