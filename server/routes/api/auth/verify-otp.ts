@@ -119,14 +119,40 @@ export default async function handler(event: any): Promise<any> {
     });
 
     if (userRecords.records.length === 0) {
+      // Check if this email is a founding member
+      let isFounding = false;
+      try {
+        const { lookupFounderEntitlement } = await import('../../../lib/founders.js');
+        const entitlement = await lookupFounderEntitlement(email);
+        if (entitlement) isFounding = true;
+      } catch (e) {
+        console.warn('Failed to check founder entitlement:', e);
+      }
+
       // Create new user
       const newUser = await teable.createRecord('tblB6Wiwy4KOx3Tjgui', {
         email: email,
+        is_founding_member: isFounding,
         created_at: new Date().toISOString(),
       });
       userRecord = newUser.records[0];
     } else {
       userRecord = userRecords.records[0];
+      // Update founding member status if not set
+      const fields = userRecord.fields as any;
+      if (fields.is_founding_member !== true) {
+        try {
+          const { lookupFounderEntitlement } = await import('../../../lib/founders.js');
+          const entitlement = await lookupFounderEntitlement(email);
+          if (entitlement) {
+            await teable.updateRecord('tblB6Wiwy4KOx3Tjgui', userRecord.id as string, {
+              is_founding_member: true,
+            });
+          }
+        } catch (e) {
+          console.warn('Failed to update founding member status:', e);
+        }
+      }
     }
   } catch (e: any) {
     console.error('Failed to find/create user:', e?.message || e);

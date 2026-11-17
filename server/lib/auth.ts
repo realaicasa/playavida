@@ -175,6 +175,15 @@ export async function getCurrentUser(event: any): Promise<{
 
   let user: any = null;
   let isFoundingMember = false;
+  let hasLifetimePro = false;
+  let hasFeaturedBusinesses = false;
+  let hasFeaturedGroups = false;
+  let hasFeaturedEvents = false;
+
+  // Check FounderLifetimeEntitlements table first
+  const email = result.context.userId; // We'll look up by email from user record
+  let userEmail = '';
+
   try {
     const userRecords = await teable.listRecords(USERS_TABLE_ID, {
       filter: { fieldId: 'user_id', operator: 'is', value: result.context.userId },
@@ -182,19 +191,42 @@ export async function getCurrentUser(event: any): Promise<{
     });
     if (userRecords.records.length > 0) {
       user = { id: userRecords.records[0].id, ...userRecords.records[0].fields };
+      userEmail = user.email || '';
       isFoundingMember = user.is_founding_member === true;
+      if (isFoundingMember) {
+        hasLifetimePro = user.pro_status === 'lifetime_paid' || user.pro_status === 'lifetime_founder';
+        hasFeaturedBusinesses = user.featured_perk === true;
+        hasFeaturedGroups = user.featured_perk === true;
+        hasFeaturedEvents = user.featured_perk === true;
+      }
     }
   } catch (e) {
     console.warn('Failed to fetch user details:', e);
   }
 
-  const email = user?.email || '';
+  // Also check FounderLifetimeEntitlements table
+  if (userEmail) {
+    try {
+      const { lookupFounderEntitlement } = await import('./founders.js');
+      const entitlement = await lookupFounderEntitlement(userEmail);
+      if (entitlement) {
+        isFoundingMember = true;
+        hasLifetimePro = entitlement.unlimited_pro;
+        hasFeaturedBusinesses = entitlement.featured_businesses;
+        hasFeaturedGroups = entitlement.featured_groups;
+        hasFeaturedEvents = entitlement.featured_events;
+      }
+    } catch (e) {
+      console.warn('Failed to check founder entitlements:', e);
+    }
+  }
+
   const superadminEmails = (process.env.SUPERADMIN_EMAILS || '').split(',').map((e: string) => e.trim().toLowerCase());
-  const isSuperadmin = superadminEmails.includes(email.toLowerCase());
+  const isSuperadmin = superadminEmails.includes(userEmail.toLowerCase());
 
   return {
     authenticated: true,
-    user,
+    user: user ? { ...user, hasLifetimePro, hasFeaturedBusinesses, hasFeaturedGroups, hasFeaturedEvents } : null,
     isSuperadmin,
     isFoundingMember,
   };

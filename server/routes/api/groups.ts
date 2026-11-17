@@ -68,11 +68,11 @@ export default async function handler(event: any): Promise<any> {
     try {
       const teable = getTeableClient();
 
-      // Check if user is a founding member
+      // Check if user is a founding member (from Users table or FounderLifetimeEntitlements)
       let isFoundingMember = false;
       try {
         const userRecords = await teable.listRecords(process.env.TEABLE_TABLE_USERS || 'tblB6Wiwy4KOx3Tjgui', {
-          filter: { fieldId: 'user_id', operator: 'is', value: currentUser.user?.user_id || '' },
+          filter: { fieldId: 'email', operator: 'is', value: currentUser.user?.email || '' },
           maxRecords: 1,
         });
         if (userRecords.records.length > 0) {
@@ -80,6 +80,16 @@ export default async function handler(event: any): Promise<any> {
         }
       } catch (e) {
         console.warn('Failed to check founding member status:', e);
+      }
+      // Fallback: check FounderLifetimeEntitlements
+      if (!isFoundingMember && currentUser.user?.email) {
+        try {
+          const { lookupFounderEntitlement } = await import('../../../lib/founders.js');
+          const entitlement = await lookupFounderEntitlement(currentUser.user.email);
+          if (entitlement) isFoundingMember = true;
+        } catch (e) {
+          console.warn('Failed to check founder entitlements:', e);
+        }
       }
 
       const record = await teable.createRecord(GROUPS_TABLE_ID, {
