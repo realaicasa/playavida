@@ -189,6 +189,11 @@ interface SiteSettings {
   legal_privacy_es: string;
   legal_terms_en: string;
   legal_terms_es: string;
+  maintenance_readonly: boolean;
+  banner_enabled: boolean;
+  banner_text: string;
+  banner_link: string;
+  banner_tone: 'info' | 'promo' | 'alert';
 }
 
 const TABS = [
@@ -204,6 +209,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ language, onClos
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
+  const [health, setHealth] = useState<any>(null);
+  const [healthLoading, setHealthLoading] = useState(false);
 
   const isEs = language === 'es';
 
@@ -215,7 +222,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ language, onClos
         setLoading(false);
       })
       .catch(() => setLoading(false));
+    fetchHealth();
   }, []);
+
+  const fetchHealth = () => {
+    setHealthLoading(true);
+    fetch('/api/admin/health')
+      .then((r) => r.json())
+      .then((data) => { setHealth(data); setHealthLoading(false); })
+      .catch(() => setHealthLoading(false));
+  };
 
   const handleSave = async () => {
     if (!settings) return;
@@ -285,6 +301,113 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ language, onClos
         ) : activeTab === 'platform' ? (
           <div className="space-y-6">
             <h3 className="text-lg font-semibold text-stone-800">Platform & Launch Controls</h3>
+
+            {/* System Health Bar */}
+            <div className="p-4 bg-white rounded-xl border border-stone-200">
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="font-medium text-stone-800">System Health</h4>
+                <button onClick={fetchHealth} disabled={healthLoading} className="px-3 py-1 text-xs bg-stone-100 rounded hover:bg-stone-200 disabled:opacity-50">
+                  {healthLoading ? 'Checking...' : 'Refresh'}
+                </button>
+              </div>
+              {health ? (
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                  <div className="p-2 bg-stone-50 rounded">
+                    <p className="text-xs text-stone-500">Teable</p>
+                    <p className={`font-medium ${health.teable?.status === 'ok' ? 'text-green-600' : 'text-red-600'}`}>
+                      {health.teable?.status} ({health.teable?.latency_ms}ms)
+                    </p>
+                  </div>
+                  <div className="p-2 bg-stone-50 rounded">
+                    <p className="text-xs text-stone-500">Resend</p>
+                    <p className={`font-medium ${health.resend?.status === 'configured' ? 'text-green-600' : 'text-red-600'}`}>
+                      {health.resend?.status}
+                    </p>
+                  </div>
+                  <div className="p-2 bg-stone-50 rounded">
+                    <p className="text-xs text-stone-500">Stripe</p>
+                    <p className={`font-medium ${health.stripe?.status === 'configured' ? 'text-green-600' : 'text-red-600'}`}>
+                      {health.stripe?.status}
+                    </p>
+                  </div>
+                  <div className="p-2 bg-stone-50 rounded">
+                    <p className="text-xs text-stone-500">Last Webhook</p>
+                    <p className="font-medium text-stone-700 text-xs">{health.last_webhook_at || 'None'}</p>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-xs text-stone-500">Click Refresh to check system health.</p>
+              )}
+            </div>
+
+            {/* Maintenance Mode Toggle */}
+            <div className="flex items-center justify-between p-4 bg-white rounded-xl border border-stone-200">
+              <div>
+                <p className="font-medium text-stone-800">Maintenance / Read-Only Mode</p>
+                <p className="text-xs text-stone-500">When ON, public write routes return 503.</p>
+              </div>
+              <button
+                onClick={() => updateField('maintenance_readonly', !settings?.maintenance_readonly)}
+                className={`w-12 h-6 rounded-full transition-colors ${settings?.maintenance_readonly ? 'bg-red-500' : 'bg-stone-300'}`}
+              >
+                <span className={`block w-5 h-5 rounded-full bg-white shadow transition-transform ${settings?.maintenance_readonly ? 'translate-x-6' : 'translate-x-0.5'}`} />
+              </button>
+            </div>
+
+            {/* Banner Controls */}
+            <div className="space-y-3 p-4 bg-white rounded-xl border border-stone-200">
+              <h4 className="font-medium text-stone-800">Announcement Banner</h4>
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-stone-500">Enable banner on public app</p>
+                <button
+                  onClick={() => updateField('banner_enabled', !settings?.banner_enabled)}
+                  className={`w-12 h-6 rounded-full transition-colors ${settings?.banner_enabled ? 'bg-teal-500' : 'bg-stone-300'}`}
+                >
+                  <span className={`block w-5 h-5 rounded-full bg-white shadow transition-transform ${settings?.banner_enabled ? 'translate-x-6' : 'translate-x-0.5'}`} />
+                </button>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-stone-700 mb-1">Banner Text</label>
+                <textarea
+                  value={settings?.banner_text || ''}
+                  onChange={(e) => updateField('banner_text', e.target.value)}
+                  rows={2}
+                  className="w-full px-3 py-2 border border-stone-300 rounded-lg text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-stone-700 mb-1">Banner Link (optional)</label>
+                <input
+                  type="text"
+                  value={settings?.banner_link || ''}
+                  onChange={(e) => updateField('banner_link', e.target.value)}
+                  className="w-full px-3 py-2 border border-stone-300 rounded-lg text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-stone-700 mb-1">Banner Tone</label>
+                <select
+                  value={settings?.banner_tone || 'info'}
+                  onChange={(e) => updateField('banner_tone', e.target.value)}
+                  className="w-full px-3 py-2 border border-stone-300 rounded-lg text-sm"
+                >
+                  <option value="info">Info</option>
+                  <option value="promo">Promo</option>
+                  <option value="alert">Alert</option>
+                </select>
+              </div>
+              {/* Live Preview */}
+              {settings?.banner_enabled && settings?.banner_text && (
+                <div className={`p-3 rounded-lg text-sm ${
+                  settings.banner_tone === 'alert' ? 'bg-red-100 text-red-800' :
+                  settings.banner_tone === 'promo' ? 'bg-green-100 text-green-800' :
+                  'bg-blue-100 text-blue-800'
+                }`}>
+                  <p>{settings.banner_text}</p>
+                  {settings.banner_link && <a href={settings.banner_link} className="underline text-xs">{settings.banner_link}</a>}
+                </div>
+              )}
+            </div>
 
             {/* Launch Mode Toggle */}
             <div className="flex items-center justify-between p-4 bg-white rounded-xl border border-stone-200">

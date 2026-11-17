@@ -13,6 +13,11 @@ const DEFAULT_SETTINGS = {
   legal_privacy_es: '',
   legal_terms_en: '',
   legal_terms_es: '',
+  maintenance_readonly: false,
+  banner_enabled: false,
+  banner_text: '',
+  banner_link: '',
+  banner_tone: 'info' as 'info' | 'promo' | 'alert',
 };
 
 export interface SiteSettings {
@@ -26,6 +31,11 @@ export interface SiteSettings {
   legal_privacy_es: string;
   legal_terms_en: string;
   legal_terms_es: string;
+  maintenance_readonly: boolean;
+  banner_enabled: boolean;
+  banner_text: string;
+  banner_link: string;
+  banner_tone: 'info' | 'promo' | 'alert';
 }
 
 export async function getSiteSettings(): Promise<SiteSettings> {
@@ -49,6 +59,11 @@ export async function getSiteSettings(): Promise<SiteSettings> {
         legal_privacy_es: fields.legal_privacy_es || '',
         legal_terms_en: fields.legal_terms_en || '',
         legal_terms_es: fields.legal_terms_es || '',
+        maintenance_readonly: fields.maintenance_readonly === true || fields.maintenance_readonly === 'true',
+        banner_enabled: fields.banner_enabled === true || fields.banner_enabled === 'true',
+        banner_text: fields.banner_text || '',
+        banner_link: fields.banner_link || '',
+        banner_tone: fields.banner_tone || 'info',
       };
     }
   } catch (e) {

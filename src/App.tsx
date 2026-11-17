@@ -384,6 +384,21 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[#FAF9F6] text-stone-900 flex flex-col font-['Inter',sans-serif]">
+      {/* Global Announcement Banner */}
+      {siteSettings.banner_enabled && siteSettings.banner_text && (
+        <div className={`px-4 py-2 text-sm text-center ${
+          siteSettings.banner_tone === 'alert' ? 'bg-red-100 text-red-800' :
+          siteSettings.banner_tone === 'promo' ? 'bg-green-100 text-green-800' :
+          'bg-blue-100 text-blue-800'
+        }`}>
+          <span>{siteSettings.banner_text}</span>
+          {siteSettings.banner_link && (
+            <a href={siteSettings.banner_link} target="_blank" rel="noopener noreferrer" className="ml-2 underline">
+              {siteSettings.banner_link}
+            </a>
+          )}
+        </div>
+      )}
       {showIntro && (
         <LandingPage
           language={language}
