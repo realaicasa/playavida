@@ -91,6 +91,19 @@ const UsersTab: React.FC = () => {
     <div className="space-y-4">
       <h3 className="text-lg font-semibold text-stone-800">Users & Founding Member Allowlist</h3>
       <div className="flex gap-2">
+        <button
+          onClick={async () => {
+            const res = await fetch('/api/admin/seed-founders', { method: 'POST' });
+            const data = await res.json();
+            alert(data.ok ? `Seeded ${data.created} new, updated ${data.updated} (total ${data.total})` : data.code);
+            fetchUsers(search);
+          }}
+          className="px-4 py-2 bg-teal-500 text-white rounded-lg text-sm font-medium hover:bg-teal-600"
+        >
+          Seed Confirmed Founders
+        </button>
+      </div>
+      <div className="flex gap-2">
         <input type="text" placeholder="Add founding email..." value={newEmail} onChange={(e) => setNewEmail(e.target.value)} className="flex-1 px-3 py-2 border border-stone-300 rounded-lg text-sm" />
         <button onClick={handleAddFounding} className="px-4 py-2 bg-teal-500 text-white rounded-lg text-sm">Add</button>
       </div>
@@ -410,3 +423,5 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ language, onClos
     </div>
   );
 };
+
+
