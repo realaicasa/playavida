@@ -1,4 +1,5 @@
 import { getTeableClient, Filter } from './teable';
+import { getRequestHeader } from 'h3';
 
 const SESSIONS_TABLE_ID = process.env.TEABLE_SESSIONS_TABLE_ID;
 if (!SESSIONS_TABLE_ID) {
@@ -142,6 +143,39 @@ export function requireOwnership(businessIdParam: string = 'businessId') {
   };
 }
 
+export function requireStaff(businessIdParam: string = 'businessId') {
+  return async (request: Request, params?: Record<string, string>): Promise<{ context: any; error?: Response }> => {
+    const authResult = await requireAuth(request);
+    if (authResult.error) return authResult;
+
+    const businessId = params?.[businessIdParam] || new URL(request.url).searchParams.get(businessIdParam);
+    if (!businessId) {
+      return {
+        context: null,
+        error: new Response(JSON.stringify({ ok: false, code: 'MISSING_BUSINESS_ID' }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      };
+    }
+
+    const hasStaffAccess = authResult.context.staffAssignments.some(
+      (assignment: any) => assignment.businessId === businessId
+    );
+    if (!hasStaffAccess) {
+      return {
+        context: null,
+        error: new Response(JSON.stringify({ ok: false, code: 'FORBIDDEN' }), {
+          status: 403,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      };
+    }
+
+    return { context: authResult.context, error: undefined };
+  };
+}
+
 export async function getCurrentUser(event: any): Promise<{
   authenticated: boolean;
   user?: any;
@@ -149,14 +183,11 @@ export async function getCurrentUser(event: any): Promise<{
   isFoundingMember: boolean;
   isSuspended: boolean;
 }> {
-  const cookieHeader = (event.req?.headers?.cookie) || (typeof event.headers?.get === 'function' ? event.headers.get('cookie') : '') || '';
-  // h3 v2: use getRequestHeader if available
   let cookie = '';
   try {
-    const { getRequestHeader } = await import('h3');
     cookie = getRequestHeader(event, 'cookie') || '';
   } catch {
-    cookie = cookieHeader;
+    cookie = (event?.req?.headers?.cookie) || '';
   }
 
   const sessionMatch = cookie.match(/session_id=([^;]+)/);
@@ -180,18 +211,13 @@ export async function getCurrentUser(event: any): Promise<{
   let hasFeaturedBusinesses = false;
   let hasFeaturedGroups = false;
   let hasFeaturedEvents = false;
-
-  // Check FounderLifetimeEntitlements table first
-  const email = result.context.userId; // We'll look up by email from user record
   let userEmail = '';
 
+  // Look up user by Teable record ID (session stores the Teable record ID)
   try {
-    const userRecords = await teable.listRecords(USERS_TABLE_ID, {
-      filter: { fieldId: 'user_id', operator: 'is', value: result.context.userId },
-      maxRecords: 1,
-    });
-    if (userRecords.records.length > 0) {
-      user = { id: userRecords.records[0].id, ...userRecords.records[0].fields };
+    const userRecord = await teable.getRecord(USERS_TABLE_ID, result.context.userId);
+    if (userRecord) {
+      user = { id: userRecord.id, ...userRecord.fields };
       userEmail = user.email || '';
       isFoundingMember = user.is_founding_member === true;
       if (isFoundingMember) {
@@ -237,6 +263,5 @@ export async function getCurrentUser(event: any): Promise<{
     user: user ? { ...user, hasLifetimePro, hasFeaturedBusinesses, hasFeaturedGroups, hasFeaturedEvents } : null,
     isSuperadmin,
     isFoundingMember,
-    isSuspended: false,
   };
 }
