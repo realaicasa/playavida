@@ -34,11 +34,14 @@ export default defineMiddleware(async (event) => {
   const url = new URL(event.req.url || '/', 'http://localhost');
   const path = url.pathname;
 
-  // Excluded paths: /admin, /api/*, and static assets
+  // Excluded paths: /admin, /api/*, /login, /auth, static assets
   if (
     path.startsWith('/admin') ||
     path.startsWith('/api/') ||
     path.startsWith('/_') ||
+    path === '/login' ||
+    path === '/auth' ||
+    url.searchParams.has('login') ||
     path.match(/\.(js|css|png|jpg|jpeg|svg|ico|woff|woff2|webmanifest|json)$/)
   ) {
     return;

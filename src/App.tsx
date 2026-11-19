@@ -210,6 +210,14 @@ export default function App() {
   // Client-side Launch-Mode Gate fallback
   useEffect(() => {
     if (isSessionLoading) return;
+    // Allow login/auth paths to bypass launch-mode redirect
+    const isLoginPath = window.location.pathname === '/login' || window.location.pathname === '/auth' || window.location.search.includes('login=1');
+    if (isLoginPath) {
+      if (!currentUser) {
+        setIsAuthModalOpen(true);
+      }
+      return;
+    }
     if (!siteSettings.launch_mode_enabled) return;
     if (window.location.pathname === '/admin') return;
     if (currentUser && (isSuperadmin || (currentUser as any).is_founding_member)) return;
@@ -217,6 +225,14 @@ export default function App() {
       window.location.replace(siteSettings.waitlist_url);
     }
   }, [siteSettings, currentUser, isSessionLoading, isSuperadmin]);
+
+  // Open OTP login modal on /login or /auth paths
+  useEffect(() => {
+    const isLoginPath = window.location.pathname === '/login' || window.location.pathname === '/auth' || window.location.search.includes('login=1');
+    if (isLoginPath && !currentUser && !isSessionLoading) {
+      setIsAuthModalOpen(true);
+    }
+  }, [currentUser, isSessionLoading]);
   useEffect(() => {
     const validateSession = async () => {
       try {
