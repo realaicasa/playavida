@@ -57,6 +57,7 @@ import { RivieraMayaMap } from './components/RivieraMayaMap';
 import { QuickLookupModal } from './components/QuickLookupModal';
 import { WikiGlobalSearch } from './components/WikiGlobalSearch';
 import { Footer } from './components/Footer';
+import { LandingPage } from './components/LandingPage';
 import { AdminDashboard } from './components/AdminDashboard';
 import { QRcasasModal } from './components/QRcasasModal';
 import {
