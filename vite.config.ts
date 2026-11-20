@@ -40,6 +40,10 @@ export default defineConfig(() => {
             ],
           },
           workbox: {
+            skipWaiting: true,
+            clientsClaim: true,
+            cleanupOutdatedCaches: true,
+            navigateFallbackDenylist: [/^\/api\//, /^\/admin/, /^\/login/, /^\/auth/],
             globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
           },
           devOptions: {

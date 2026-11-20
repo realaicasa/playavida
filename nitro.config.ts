@@ -6,7 +6,10 @@ export default defineNitroConfig({
   routesDir: 'routes',
   compatibilityDate: '2026-10-12',
   routeRules: {
-    '/api/**': { cors: true },
+    '/api/**': { cors: true, headers: { 'cache-control': 'no-store' } },
+    '/sw.js': { headers: { 'cache-control': 'no-cache, no-store, must-revalidate' } },
+    '/workbox-*.js': { headers: { 'cache-control': 'no-cache, no-store, must-revalidate' } },
+    '/': { headers: { 'cache-control': 'no-cache, no-store, must-revalidate' } },
   },
   publicAssets: [{
     baseURL: '/',
