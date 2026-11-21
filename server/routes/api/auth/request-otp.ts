@@ -87,10 +87,17 @@ export default async function handler(event: any): Promise<any> {
   try {
     const recentOTPs = await teable.listRecords('tblVe1AhQ3zLW3eijnw', {
       filter: { fieldId: 'email_hash', operator: 'is', value: emailHash },
-      maxRecords: 10,
+      maxRecords: 50,
     });
 
-    if (recentOTPs.records.length >= 5) {
+    // Count only OTPs created within the last hour
+    const recentCount = recentOTPs.records.filter((r) => {
+      const createdAt = (r.fields as any).created_at;
+      if (!createdAt) return false;
+      return new Date(createdAt).getTime() >= oneHourAgo.getTime();
+    }).length;
+
+    if (recentCount >= 5) {
       return jsonResponse(event, 429, { ok: false, code: 'RATE_LIMITED' });
     }
   } catch (e: any) {
