@@ -391,14 +391,29 @@ class PlayaVidaStore {
     setStorage(STORAGE_KEYS.BLOCKS, filtered);
   }
 
-  // --- Businesses ---
+  // Hydrated data from Teable (overrides localStorage)
+  private hydratedBusinesses: PublicBusinessProjection[] | null = null;
+  private hydratedGroups: any[] | null = null;
+  private hydratedEvents: any[] | null = null;
+
+  hydrateBusinesses(data: PublicBusinessProjection[]): void {
+    this.hydratedBusinesses = data;
+  }
+
+  hydrateGroups(data: any[]): void {
+    this.hydratedGroups = data;
+  }
+
+  hydrateEvents(data: any[]): void {
+    this.hydratedEvents = data;
+  }
   // Returns ONLY public projections. Drafts are excluded unless requested by creator.
   getPublicBusinesses(
     filterLocation?: LocationCode | 'ALL',
     searchQuery?: string,
     currentUserId?: string | null
   ): PublicBusinessProjection[] {
-    const businesses = getStorage<PublicBusinessProjection[]>(
+    const businesses = this.hydratedBusinesses || getStorage<PublicBusinessProjection[]>(
       STORAGE_KEYS.BUSINESSES,
       INITIAL_BUSINESSES
     );

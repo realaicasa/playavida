@@ -113,13 +113,26 @@ export default function App() {
     show_sample_data: true,
   });
 
-  // Fetch site settings on mount
+  // Fetch site settings and hydrate businesses from Teable on mount
   useEffect(() => {
     fetch('/api/settings')
       .then((res) => res.json())
       .then((data) => {
         if (data && typeof data === 'object') {
           setSiteSettings((prev) => ({ ...prev, ...data }));
+        }
+      })
+      .catch(() => {
+        // Keep defaults on error
+      });
+
+    // Hydrate businesses from Teable
+    fetch('/api/businesses')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data && data.businesses && Array.isArray(data.businesses)) {
+          playaVidaStore.hydrateBusinesses(data.businesses);
+          setDataVersion((v) => v + 1);
         }
       })
       .catch(() => {
@@ -192,11 +205,9 @@ export default function App() {
       if (isSessionLoading) return; // Don't redirect while loading
       if (isSuperadmin) {
         setIsAdminOpen(true);
-      } else if (!currentUser) {
-        setIsAuthModalOpen(true);
       } else {
-        // Authenticated but not superadmin → redirect to /
-        window.location.href = '/';
+        // Not superadmin (or not logged in) → show login modal
+        setIsAuthModalOpen(true);
       }
     };
     checkAdmin();
@@ -214,9 +225,7 @@ export default function App() {
     // Allow login/auth paths to bypass launch-mode redirect
     const isLoginPath = window.location.pathname === '/login' || window.location.pathname === '/auth' || window.location.search.includes('login=1');
     if (isLoginPath) {
-      if (!currentUser) {
-        setIsAuthModalOpen(true);
-      }
+      setIsAuthModalOpen(true);
       return;
     }
     if (!siteSettings.launch_mode_enabled) return;
@@ -246,12 +255,9 @@ export default function App() {
             if (meRes.ok) {
               const meData = await meRes.json();
               setIsSuperadmin(meData.isSuperadmin || false);
-            }
-            // Fetch user details from Teable
-            const userRes = await fetch(`/api/users/${data.userId}`);
-            if (userRes.ok) {
-              const user = await userRes.json();
-              setCurrentUser(user);
+              if (meData.user) {
+                setCurrentUser(meData.user);
+              }
             }
           }
         }
